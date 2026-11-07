@@ -1,0 +1,12 @@
+<%# locals: (current: nil) %>
+<%= lc_app_header do |header| %>
+  <%= header.brand "/", label: "Kiln home" do %>
+    <span class="brand-mark" aria-hidden="true"></span><span class="text-base">kiln</span>
+  <% end %>
+  <%= header.nav do |nav| %>
+    <%= nav.link "Docs", "/introduction", current: current == :docs %>
+  <% end %>
+  <%= header.actions do %>
+    <%= lc_button_link_to "https://github.com/davafons/kiln", variant: :ghost, size: :sm, aria: { label: "Source on GitHub" } do %><%= render "shared/github_icon" %><% end %>
+  <% end %>
+<% end %>

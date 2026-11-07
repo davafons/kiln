@@ -16,7 +16,7 @@ Dir.chdir(File.expand_path("..", __dir__))
 Violation = Data.define(:path, :line, :message)
 
 ALLOW = "house-rules:allow"
-PROSE = /\.(md|markdown)\z/
+PROSE = /\.(md|markdown)(\.erb)?\z/
 # Files we generate or receive rather than write.
 SKIPPED = %r{\A(Gemfile\.lock|test/dummy/public/|test/dummy/log/|test/dummy/tmp/|tmp/)}
 
@@ -71,12 +71,16 @@ HISTORY = {
 }
 
 DOC_LINK = %r{\]\((?<target>(?!https?:|mailto:|#)[^)\s]+)\)}
+# Views of the docs site and the test app link to routes, which their builds check.
+SITE_PAGES = %r{\A(docs|test/dummy)/app/views/}
 
 def dead_link_violations(path, text)
   text.each_line.with_index(1).flat_map do |line, number|
     next [] if line.include?(ALLOW)
 
     line.scan(DOC_LINK).flatten.filter_map do |target|
+      next if target.start_with?("/") && path.match?(SITE_PAGES)
+
       file = File.expand_path(target.split("#").first, File.dirname(path))
       Violation.new(path, number, "`#{target}` does not exist") unless File.exist?(file)
     end
@@ -90,7 +94,7 @@ BANNED = {
 }
 
 def dependency_violations
-  %w[Gemfile kiln.gemspec].flat_map do |manifest|
+  %w[Gemfile kiln.gemspec docs/Gemfile].flat_map do |manifest|
     File.readlines(manifest, chomp: true).each_with_index.filter_map do |line, index|
       name = line[/^\s*(?:gem|spec\.add_(?:development_)?dependency)\s+["']([^"']+)["']/, 1]
       reason = name && BANNED[name]

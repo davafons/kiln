@@ -1,0 +1,64 @@
+# Installation
+
+This page adds Kiln to an existing Rails 8.1 app and runs a first build. The current release is <%= Kiln::VERSION %>.
+
+## Add the gem
+
+```ruby
+# Gemfile
+gem "kiln"
+```
+
+Run `bundle install`. Kiln adds its rake tasks through a Railtie, so there is no generator to run.
+
+## Write config/kiln.rb
+
+Kiln loads `config/kiln.rb` before the app's initializers. It holds two blocks: `Kiln.configure` for options and `Kiln.pages` for the routes that need params.
+
+```ruby
+# config/kiln.rb
+Kiln.configure do |config|
+  config.url = "https://example.com"
+  config.not_found = "/404"
+end
+
+Kiln.pages do
+  params :post, -> { Post.published.map { { slug: it.slug } } }
+  skip :search, reason: "dynamic"
+end
+```
+
+`url` is the public base URL. Its host is sent with every request, and `sitemap.xml` is written only when it is set. `not_found` is the path rendered to `404.html`. An app whose routes all have no params can leave `Kiln.pages` out. Param sources are lambdas, so they can name models that do not exist yet when the file loads.
+
+## Run a build
+
+```sh
+RAILS_ENV=production bin/rails kiln:build
+```
+
+The output goes to `dist/`, which is wiped at the start of every build. Add it to `.gitignore` unless you commit the output on purpose. A successful build prints the number of files written, the output path and, from the second build on, the pages added, removed and changed since the previous one:
+
+```text
+Kiln build succeeded: 42 files written.
+Pages since last build: 1 added, 0 removed, 2 changed
+  added: /blog/hello
+  changed: /
+  changed: /blog
+Output: /path/to/app/dist (3.1s)
+```
+
+A failed build prints every error, grouped by kind, and exits with status 1. Set `VERBOSE=1` to see the request log while it renders.
+
+The comparison with the previous build reads `tmp/kiln-manifest.json`, which the build writes outside the output, so it is never published.
+
+## Look at the output
+
+```sh
+bin/rails kiln:serve
+```
+
+`kiln:serve` serves the output the way Cloudflare Pages and GitHub Pages resolve paths: the exact file, then `x.html`, then `x/index.html`. It applies the exact rules in `_redirects` and answers unknown paths with `404.html`. It reads `PORT` (default 4000) and `BIND` (default `localhost`). Kiln adds no dev server for writing pages: keep using `bin/rails server`.
+
+## Fresh checkouts
+
+Propshaft only serves asset folders that exist when the app boots. Track `app/assets/builds/.keep`, as a new Rails app does. Without it, a build on a fresh checkout stops with one error that says so.

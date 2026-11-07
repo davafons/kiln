@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%= render "shared/head", title: "Kiln: fire a Rails app into a static site", description: "Kiln renders every GET route of a Rails app through Rack and writes plain files that any static host can serve." %>
+  </head>
+  <body class="antialiased">
+    <%= lc_skip_link %>
+    <%= render "shared/header" %>
+    <main id="main"><%= yield %></main>
+    <%= render "shared/footer" %>
+  </body>
+</html>

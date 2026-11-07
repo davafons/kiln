@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `kiln:build` boots an app without its own secret with `SECRET_KEY_BASE_DUMMY`, so gems that read
+  `secret_key_base` while booting (turbo-rails) no longer fail the build.
+
 ## 0.1.2 (2026-11-07)
 
 Breaking:

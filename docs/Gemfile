@@ -1,0 +1,22 @@
+source "https://rubygems.org"
+
+# Kiln's documentation site: a Rails app that Kiln renders to static files, styled with lostcoords-ui.
+# It uses the Kiln in this repository, so every change to Kiln is also built on a real site.
+
+gem "rails", "~> 8.1.0"
+gem "propshaft"
+gem "importmap-rails"
+gem "turbo-rails"
+gem "stimulus-rails"
+gem "tailwindcss-rails", "~> 4.4"
+gem "puma"
+
+gem "lostcoords-ui", "~> 0.9.0"
+
+gem "kiln", path: ".."
+gem "commonmarker", "~> 2.9"
+gem "rouge"
+
+group :development do
+  gem "hotwire-spark", require: false
+end

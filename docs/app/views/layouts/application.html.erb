@@ -1,0 +1,23 @@
+<% body = yield %>
+<% index = @page && Docs::PAGES.index(@page) %>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%= render "shared/head", title: [ @page&.title || "Page not found", "Kiln" ].join(" · "), description: @page&.description || "Kiln renders every GET route of a Rails app into a static site." %>
+    <% unless @page %><meta name="robots" content="noindex"><% end %>
+  </head>
+  <body class="antialiased">
+    <%= lc_skip_link %>
+    <%= render "shared/header", current: :docs %>
+    <% contents = lc_toc(headings: body) if body.match?(/<h[23] id=/) %>
+    <%= lc_docs_shell navigation: render("shared/navigation"), contents:, menu_label: "Pages", main: { class: "max-w-3xl" } do %>
+      <%= lc_prose(anchors: true) { body } %>
+      <% if index %>
+        <%= lc_pager previous: (index.positive? ? Docs::PAGES[index - 1].then { [ it.title, "/#{it.slug}" ] } : nil),
+              next: Docs::PAGES[index + 1]&.then { [ it.title, "/#{it.slug}" ] },
+              class: "mt-section" %>
+      <% end %>
+    <% end %>
+    <%= render "shared/footer" %>
+  </body>
+</html>

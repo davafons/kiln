@@ -7,3 +7,10 @@
 /test/dummy/public/assets/
 /test/dummy/storage/
 *.gem
+/docs/log/
+/docs/tmp/
+/docs/dist/
+/docs/public/assets/
+/docs/app/assets/builds/*
+!/docs/app/assets/builds/.keep
+/docs/.bundle/

@@ -1,8 +1,13 @@
 # Omakase Ruby styling for Rails
 inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 
-# Overwrite or add rules to create your own house style
-#
-# # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
-# Layout/SpaceInsideArrayLiteralBrackets:
-#   Enabled: false
+inherit_mode:
+  merge:
+    - Exclude
+
+# docs/ is a Rails app linted with the gem's own style. Skip what it generates or installs.
+AllCops:
+  Exclude:
+    - "docs/dist/**/*"
+    - "docs/tmp/**/*"
+    - "docs/vendor/**/*"
