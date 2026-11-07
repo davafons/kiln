@@ -13,7 +13,8 @@ class Kiln::BuildTest < Kiln::TestCase
 
     %w[
       index.html about/index.html guide/index.html posts/index.html posts/hello-world/index.html
-      posts/second-post/index.html private/index.html feed.xml health.json ping.txt 404.html
+      posts/second-post/index.html private/index.html contact/index.html es/contact/index.html
+      ja/contact/index.html feed.xml health.json ping.txt 404.html
       icon.svg _redirects sitemap.xml
     ].each { assert tmp_output.join(it).file?, "expected #{it}" }
 
@@ -40,6 +41,21 @@ class Kiln::BuildTest < Kiln::TestCase
     pattern = File.read(css)[%r{/assets/pattern-\w+\.svg}]
     assert tmp_output.join(pattern.delete_prefix("/")).file?, "CSS url() asset exported"
     assert Dir[tmp_output.join("assets/controllers/hello_controller-*.js")].any?, "importmap modules exported"
+  end
+
+  test "a precompiling build exports assets without touching public/assets" do
+    assets = dummy_app.config.assets
+    original = assets.slice(:server, :output_path, :manifest_path)
+    assets.server = false
+    public_assets = nil
+    rendering = ->(html) { public_assets = Rails.root.join("public/assets").exist?; html }
+
+    replace_method(Kiln::Processors::StripCSRF, :call, rendering) { assert build.report.success? }
+    assert_equal false, public_assets
+    assert Dir[tmp_output.join("assets/application-*.css")].any?
+    assert_equal original, assets.slice(:server, :output_path, :manifest_path).merge(server: original[:server])
+  ensure
+    assets.merge!(original)
   end
 
   test "redirects, sitemap and manifest" do
@@ -85,23 +101,15 @@ class Kiln::BuildTest < Kiln::TestCase
   end
 
   test "reports broken links found by the verifier" do
-    config = Kiln.config.dup
-    config.copy_public = false
-    report = build(config:).report
+    report = Dir.mktmpdir do |dir|
+      source = File.join(dir, "broken.html")
+      File.write(source, %(<a href="/missing">Missing</a>))
+      config = Kiln.config.dup
+      config.files = { "broken.html" => source }
+      build(config:).report
+    end
 
-    broken = report.errors.select { it.kind == :broken_link }
-    assert_includes broken.map(&:message), "/icon.svg", "the layout links to a public/ file that was not copied"
-  end
-
-  test "hooks receive the build context, and hook errors are reported" do
-    seen = nil
-    config = Kiln.config.dup
-    config.instance_variable_set(:@before_build_hooks, [ ->(context) { seen = context } ])
-    config.instance_variable_set(:@after_build_hooks, [ ->(_) { raise "boom" } ])
-
-    report = build(config:).report
-    assert_equal tmp_output, seen.output
-    assert_equal [ "RuntimeError: boom" ], report.errors.select { it.kind == :hook }.map { it.message.split(" (").first }
+    assert_equal [ [ "/missing", "/broken" ] ], report.errors.select { it.kind == :broken_link }.map { [ it.message, it.path ] }
   end
 
   test "reports pages changed since the previous build of the configured output" do
@@ -124,21 +132,34 @@ class Kiln::BuildTest < Kiln::TestCase
     assert_equal [ "/missing.txt" ], report.errors.select { it.kind == :write }.map(&:path)
   end
 
+  test "writes CNAME from a string or from the url" do
+    config = Kiln.config.dup
+    config.cname = "docs.example.com"
+    build(config:)
+    assert_equal "docs.example.com\n", read("CNAME")
+
+    config.cname = true
+    build(config:)
+    assert_equal "example.com\n", read("CNAME")
+
+    config.url = nil
+    assert_equal [ "/CNAME" ], build(config:).report.errors.map(&:path)
+    assert_not tmp_output.join("sitemap.xml").exist?, "no sitemap without a url"
+  end
+
   test "Kiln.building? and the build cache only live during a build" do
     inside = nil
-    config = Kiln.config.dup
-    config.instance_variable_set(:@before_build_hooks, [ ->(_) { inside = Kiln.building?; Kiln.build_cache.write(:x, 1) } ])
-    build(config:)
+    rendering = ->(html) { inside = Kiln.building?; Kiln.build_cache.fetch(:x) { 1 }; html }
+    replace_method(Kiln::Processors::StripCSRF, :call, rendering) { build }
 
     assert inside
     refute Kiln.building?
-    assert_nil Kiln.build_cache.read(:x)
+    Kiln.building! { assert_equal 2, Kiln.build_cache.fetch(:x) { 2 } }
   end
 
   test "fails when editor source attributes reach the output" do
-    config = Kiln.config.dup
-    config.processors = [ ->(html, _) { html.sub("<main>", '<main data-herb-source="app/views/x.html.erb:1:1">') } ]
-    report = build(config:).report
+    herb = ->(html) { html.sub("<main>", '<main data-herb-source="app/views/x.html.erb:1:1">') }
+    report = replace_method(Kiln::Processors::StripCSRF, :call, herb) { build.report }
 
     errors = report.errors.select { it.kind == :editor_markup }
     assert_equal 1, errors.size

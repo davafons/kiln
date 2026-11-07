@@ -15,6 +15,13 @@ class Kiln::Content::MarkdownTest < Kiln::TestCase
     assert_includes html, %(<a href="https://example.com">https://example.com</a>)
   end
 
+  test "render_inline drops the paragraph around a single paragraph" do
+    assert_equal "Hello <em>there</em>", Kiln::Content::Markdown.render_inline("Hello *there*\n")
+    assert_equal "", Kiln::Content::Markdown.render_inline("")
+    assert_equal "<p>one</p>\n<p>two</p>\n", Kiln::Content::Markdown.render_inline("one\n\ntwo\n")
+    assert_equal "<ul>\n<li>item</li>\n</ul>\n", Kiln::Content::Markdown.render_inline("- item\n")
+  end
+
   test "highlights fenced code with CSS classes and no inline styles" do
     html = Kiln::Content::Markdown.render("```ruby\ndef hi = 1\n```\n")
 

@@ -4,25 +4,37 @@ require "nokogiri"
 require "set"
 
 module Kiln
-  # Finds the /assets/* files the output uses and fetches them through the app, so the same code works
-  # with dynamic Propshaft (development, test) and with precompiled assets served from public/assets.
+  # Finds the /assets/* files the output uses and exports them. Compiled assets are read from the
+  # compile directory; dynamic Propshaft (development, test) serves them through the app.
   class Assets
     CSS_REFERENCE = /url\(\s*["']?([^"')]+?)["']?\s*\)|@import\s+["']([^"']+)["']/
     EXTERNAL = %r{\A(?:[a-z][a-z0-9+.-]*:|//|#)}i
 
     class << self
-      # Compiles assets in-process when the app does not serve them dynamically. Returns a callable that
-      # removes what the precompile created, or nil when nothing was compiled. When assets are served
+      # Compiles assets in-process when the app does not serve them dynamically. The compile goes to a
+      # temporary directory, never public/assets, so a development server of the same app that boots
+      # meanwhile never sees a production manifest. Returns a callable that restores the asset config
+      # and removes the directory, or nil when nothing was compiled. When assets are served
       # dynamically, still runs the build steps hooked into assets:precompile (tailwindcss:build,
       # javascript:build, css:build), so a development build never ships stale bundles.
       def precompile(app)
         return build_bundles(app) unless precompile?(app)
 
-        output_path = Pathname(app.config.assets.output_path)
-        created = !output_path.exist?
-        run_precompile(app)
-
-        -> { created ? FileUtils.rm_rf(output_path) : FileUtils.rm_f(app.config.assets.manifest_path) }
+        assets = app.config.assets
+        original = assets.slice(:output_path, :manifest_path)
+        dir = Pathname(Dir.mktmpdir("kiln-assets"))
+        cleanup = -> do
+          assets.merge!(original)
+          FileUtils.rm_rf(dir)
+        end
+        assets.merge!(output_path: dir, manifest_path: dir.join(".manifest.json"))
+        begin
+          run_precompile(app)
+        rescue Kiln::Error
+          cleanup.call
+          raise
+        end
+        cleanup
       end
 
       def precompile?(app)
@@ -30,6 +42,17 @@ module Kiln
         return false unless assets.respond_to?(:server) && assets.manifest_path
 
         !assets.server && !Pathname(assets.manifest_path).exist?
+      end
+
+      # Propshaft only adds load paths that exist at boot. On a fresh checkout, a bundler such as
+      # tailwindcss:build creates app/assets/builds during the build, too late to be served.
+      def check_builds!(app)
+        builds = app.root.join("app/assets/builds")
+        paths = app.config.respond_to?(:assets) && app.config.assets.respond_to?(:paths) && app.config.assets.paths
+        return unless paths && builds.directory? && paths.none? { Pathname(it) == builds }
+
+        raise Kiln::Error, "app/assets/builds did not exist when the app booted, so its assets are not served. " \
+          "Track app/assets/builds/.keep in version control, as a new Rails app does, and build again."
       end
 
       # Copies public/ into the output, minus public/assets. Files already in the output win, with a
@@ -93,7 +116,6 @@ module Kiln
 
     def export
       queue = referenced_paths
-      queue.concat(all_paths) if @config.assets == :all
       seen = Set.new
 
       while (path = queue.shift)
@@ -105,20 +127,33 @@ module Kiln
     private
       # Writes one asset and returns the asset paths it references (CSS url() and @import).
       def fetch(path)
-        response = @renderer.get(path)
-        unless response.success?
-          @report.error(:asset, "responded with #{response.status}", path:)
-          return []
+        body = compiled(path)
+        unless body
+          response = @renderer.get(path)
+          unless response.success?
+            @report.error(:asset, "responded with #{response.status}", path:)
+            return []
+          end
+          body = response.body
         end
 
         extension = File.extname(path)
-        body = response.body
-        body = Processors::StripSourceMaps.call(body) if @config.strip_source_maps && %w[.js .css].include?(extension)
+        body = Processors::StripSourceMaps.call(body) if %w[.js .css].include?(extension)
         write(path, body)
         extension == ".css" ? css_references(path, body) : []
       rescue StandardError => error
         @report.error(:asset, "#{error.class}: #{error.message}", path:)
         []
+      end
+
+      # The file from the compile directory when assets are precompiled, or nil.
+      def compiled(path)
+        assets = @app.config.assets
+        return if assets.server
+
+        dir = Pathname(assets.manifest_path).dirname.expand_path
+        file = dir.join(path.delete_prefix("#{prefix}/")).expand_path
+        file.binread if file.to_s.start_with?("#{dir}/") && file.file?
       end
 
       def write(path, body)
@@ -157,10 +192,6 @@ module Kiln
         rescue URI::Error
           nil
         end
-      end
-
-      def all_paths
-        @app.assets.load_path.assets.map { "#{prefix}/#{it.digested_path}" }
       end
 
       # Normalizes a URL to an asset path ("/assets/app-abc.css"), or nil when it isn't one of ours.

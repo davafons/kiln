@@ -53,11 +53,14 @@ A GET route with no required params is built automatically. A route with params 
 ```ruby
 Kiln.pages do
   params :post, -> { Post.published.map { { slug: it.slug } } }
-  params :page, -> { %w[en es ja].map { { locale: it } } + [ {} ] }  # scope "(:locale)"
+  params :page, locale: [ nil, "es", "ja" ]                         # scope "(:locale)"
+  params :archive, year: -> { Post.years }, locale: [ nil, "es" ]   # every combination
   paginate :blog_page, per: 10, total: -> { Post.count }, start: 2  # /blog/page/2, /blog/page/3, ...
   skip :search, reason: "dynamic"
 end
 ```
+
+A hash of value lists builds every combination of the values. A `nil` value leaves the key out, which fills an optional segment such as `(:locale)` with nothing. A list may be a lambda, called at build time.
 
 A route that needs params and has neither a param source nor a skip fails the build, and the error names the line to add. Rails internals, the health check, mounted engines and turbo-rails' native navigation routes are skipped by default. Redirect routes become redirects, and mounted Rack apps are built like any other route.
 
@@ -81,39 +84,23 @@ bin/rails kiln:serve                       # look at the output as a static host
 | Option | Default | |
 |---|---|---|
 | `output` | `"dist"` | Relative to `Rails.root`, or absolute. Wiped at the start of every build. |
-| `url` | `nil` | Public base URL, for the sitemap and absolute URLs. |
-| `host` | from `url`, else `"localhost"` | Host header sent with every request. |
+| `url` | `nil` | Public base URL. Its host is sent with every request (`localhost` without it), and `sitemap.xml` is written only when it is set. |
 | `paths` | `:directory` | `/now` becomes `now/index.html`. `:file` writes `now.html`. |
-| `assets` | `:referenced` | Assets the output references (HTML, importmap, CSS `url()`). `:all` exports everything. |
-| `cname` | `nil` | Writes a `CNAME` file. |
+| `cname` | `nil` | Writes a `CNAME` file with this host. `true` takes the host from `url`. |
 | `not_found` | `nil` | Path rendered to `404.html`. It may respond with 200 or 404. |
-| `redirects` | `:file` | `:file` (`_redirects`), `:meta_refresh` (HTML pages for GitHub Pages), `:both`, or `false`. |
-| `sitemap` | `true` | Writes `sitemap.xml` when `url` is set. Pages marked `noindex` stay out. |
 | `files` | `{}` | Files that aren't routes: `{ "octicons-license.txt" => "vendor/octicons/LICENSE" }`. |
-| `strip_source_maps` | `true` | Removes `sourceMappingURL` comments from JS and CSS. |
-| `absolute_urls` | `false` | Makes image URLs absolute (img, srcset, og: and twitter: images). |
-| `external_links` | `false` | Adds `target="_blank" rel="noopener"` to links to other hosts. |
-| `processors` | `[]` | Your HTML processors: `call(html, context)` returning a String. |
-| `verify` | `true` | Runs the verifier after every build. |
 | `verify_skip` | `[]` | CSS selectors for sample markup whose links aren't checked, such as `"[data-example-preview]"`. |
-| `copy_public` | `true` | Copies `public/` (minus `public/assets`) into the output. |
 
-Hooks receive a context with `output`, `env`, `manifest` and `report`:
-
-```ruby
-Kiln.configure do |config|
-  config.before_build { |context| SearchIndex.generate! }
-  config.after_build { |context| puts "#{context.manifest.entries.size} pages" }
-end
-```
+Every build exports the assets the output references (HTML, importmap, CSS `url()`), removes `sourceMappingURL` comments from JS and CSS, copies `public/` (minus `public/assets`), writes `_redirects` when a route redirects, and runs the verifier. The sitemap leaves out pages marked `noindex`.
 
 CSRF tokens and meta tags are always stripped. The rest of the HTML stays byte for byte as the app rendered it.
 
 ## Write views for a build
 
 - `Kiln.building?` is true while a build renders pages. Use it to hide development-only markup.
-- `Kiln.build_cache.fetch(key) { ... }` memoizes for one build and is cleared before and after it.
-- Builds fetch assets through the app, so keep `config.public_file_server.enabled = true` for the build environment.
+- `Kiln.build_cache.fetch(key) { ... }` memoizes for one build and is cleared before and after it. Outside a build it runs the block every time, so a development server never serves stale data.
+- A production build precompiles assets into a temporary directory and exports them from there. `public/assets` is left alone, so a development server of the same app can run at the same time.
+- Propshaft only serves asset folders that exist when the app boots. Track `app/assets/builds/.keep`, as a new Rails app does, or the build stops with an error on a fresh checkout.
 - A build in development skips the precompile but still runs the steps hooked into `assets:precompile`, such as `tailwindcss:build`.
 - Development middleware that injects markup (Hotwire Spark, web-console, rack-mini-profiler) fails the build. Load it only under `bin/rails server`.
 - Root-absolute asset paths keep every page's `<head>` identical, so Turbo visits never force a full reload.
@@ -133,6 +120,8 @@ require "kiln/content"
 
 `app/views/pages/about.html.md` renders through the layout like any view, and `.md.erb` runs ERB first. commonmarker renders GitHub Flavored Markdown with tables, strikethrough, autolinks and heading ids; raw HTML passes through. Code blocks get Rouge CSS classes.
 
+`Kiln::Content::Markdown.render(text)` returns HTML. `Kiln::Content::Markdown.render_inline(text)` drops the `<p>` around text that is a single paragraph, for titles and captions; other text renders as with `render`.
+
 With `Kiln::Content.source_positions` on, each rendered block of a `.md` view or collection entry carries `data-tensaku-md="path:startLine:startCol-endLine:endCol"` for the Tensaku editor. The format is a draft. `.md.erb` views get none, because ERB shifts the line numbers. The setting defaults to on in development when Tensaku is loaded, and is always off while Kiln is building.
 
 Collections read Markdown files with YAML frontmatter, such as `content/blog/2024-05-01-hello.md`:
@@ -144,7 +133,18 @@ posts.find("hello") # raises Kiln::Content::NotFound, which Rails maps to a 404
 post.title, post.published_at, post.html, post[:tags]
 ```
 
-Entries with `draft: true` or a future `published_at` are hidden, except in development when Kiln is not building. A server-rendered app can share a hidden entry with `posts.find(slug, preview_token: params[:token])`.
+A filename date may be `YYYY-MM-DD` or `YYYY-MM`. A month-only date sets `published_at` to the 1st of that month, and a filename that is only a date, such as `2026-08.md`, keeps the date as its slug.
+
+`SLUG.LOCALE.md` is a translation of the entry with that slug, such as `2026-08.es.md` for `2026-08.md`. A locale is two lowercase letters, optionally followed by a dash and two uppercase letters (`es`, `pt-BR`). Translations stay out of `all`, `find` and `each`:
+
+```ruby
+post.locale            # nil for SLUG.md, "es" for SLUG.es.md
+post.translation(:es)  # the visible SLUG.es.md entry, or nil
+```
+
+A translation whose entry does not exist fails when the collection loads.
+
+Entries with `draft: true` or a future `published_at` are hidden, except in development when Kiln is not building.
 
 ## Test the build
 
@@ -154,16 +154,20 @@ require "kiln/test_helper"
 class StaticSiteTest < ActiveSupport::TestCase
   include Kiln::TestHelper
 
-  test("builds the same output twice") { assert_repeatable_build }
+  test "the site builds repeatably" do
+    kiln_build(repeatable: true) { |output| assert output.join("index.html").file? }
+  end
+
   test("home page") { assert_page "/", selector: "h1", text: "Welcome" }
 end
 ```
 
-`kiln_build { |output| ... }` builds into a temp dir, fails with the report on any error, and yields the output path.
+`kiln_build { |output| ... }` builds into a temp dir, fails with the report on any error, and yields the output path. With `repeatable: true` it builds twice, fails with the list of differing files when the outputs differ, and yields the first output.
 
 ## Known limits
 
 - Pages render one at a time.
+- Redirects are written only as `_redirects`, which Cloudflare Pages and Netlify read. GitHub Pages ignores the file, so redirect routes do not redirect there.
 - Wildcard rules in your own `public/_redirects` are written out, but the verifier and `kiln:serve` only follow exact rules.
 - JS modules are found through the importmap. Relative `import "./x.js"` between files is not followed.
 - Collections read `*.md` files. `.md.erb` works for views only.

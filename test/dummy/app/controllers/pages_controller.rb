@@ -4,6 +4,7 @@ class PagesController < ApplicationController
   def guide; end
   def search; end
   def private_page; end
+  def contact; end
 
   def health
     render json: { status: "ok", posts: Post.all.size }

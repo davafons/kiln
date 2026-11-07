@@ -1,8 +1,5 @@
-require "erb"
-
 module Kiln
-  # Writes redirect responses as a _redirects file (Cloudflare Pages, Netlify) and/or meta refresh pages
-  # (GitHub Pages).
+  # Writes redirect responses as a _redirects file (Cloudflare Pages, Netlify).
   class Redirects
     Entry = Data.define(:from, :to, :status)
 
@@ -20,52 +17,19 @@ module Kiln
       end
     end
 
-    def initialize(entries, mode:, writer:, host:, url: nil)
+    def initialize(entries, host:)
       @entries = entries.map { it.with(to: relativize(it.to, host)) }
-      @mode = mode
-      @writer = writer
-      @url = url
     end
 
+    # Rules from a copied public/_redirects come first, so hand-written rules win. Returns the filename.
     def write(output)
-      files = []
-      files << write_file(output) if %i[file both].include?(@mode)
-      files.concat(write_pages) if %i[meta_refresh both].include?(@mode)
-      files
+      file = Pathname(output).join(FILENAME)
+      existing = file.exist? ? file.read.chomp.then { it.empty? ? "" : "#{it}\n" } : ""
+      File.write(file, existing + @entries.map { "#{it.from} #{it.to} #{it.status}\n" }.join)
+      FILENAME
     end
 
     private
-      # Rules from a copied public/_redirects come first, so hand-written rules win.
-      def write_file(output)
-        file = Pathname(output).join(FILENAME)
-        existing = file.exist? ? file.read.chomp.then { it.empty? ? "" : "#{it}\n" } : ""
-        File.write(file, existing + @entries.map { "#{it.from} #{it.to} #{it.status}\n" }.join)
-        FILENAME
-      end
-
-      def write_pages
-        @entries.map do |entry|
-          @writer.write_file(@writer.file_for(entry.from, "text/html"), page(entry.to))
-        end
-      end
-
-      def page(to)
-        canonical = ERB::Util.html_escape(@url && to.start_with?("/") ? "#{@url.chomp("/")}#{to}" : to)
-        to = ERB::Util.html_escape(to)
-        <<~HTML
-          <!DOCTYPE html>
-          <html>
-          <head>
-          <meta charset="utf-8">
-          <title>Redirecting</title>
-          <meta http-equiv="refresh" content="0; url=#{to}">
-          <link rel="canonical" href="#{canonical}">
-          </head>
-          <body><a href="#{to}">#{to}</a></body>
-          </html>
-        HTML
-      end
-
       def relativize(location, host)
         uri = URI.parse(location)
         return location unless uri.is_a?(URI::HTTP) && uri.host&.casecmp?(host)

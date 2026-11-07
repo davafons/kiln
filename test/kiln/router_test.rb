@@ -153,7 +153,7 @@ class Kiln::RouterTest < Kiln::TestCase
     assert @report.success?, @report.to_s
     assert_not router.rows.any? { it.status == :uncovered }
     paths = router.pages.map(&:path)
-    %w[/ /about /posts /posts/hello-world /posts/second-post /feed.xml /health.json /old-about /ping.txt /not-found].each do
+    %w[/ /about /posts /posts/hello-world /posts/second-post /feed.xml /health.json /old-about /ping.txt /not-found /contact /es/contact /ja/contact].each do
       assert_includes paths, it
     end
     assert_not_includes paths, "/search"

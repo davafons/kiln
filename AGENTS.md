@@ -6,7 +6,9 @@ Use jj for version control; preserve unrelated work and never use mutating Git c
 - Kiln knows nothing about the app's data. No models, data sources or collections in the core.
 - Fail loudly: page-level problems go in the build report, every failure at once, and the task exits non-zero.
 - Rendering goes through `Rack::MockRequest` against `Rails.application`, never controller dispatch or `Integration::Session`.
-- Output must stay byte-stable. Processors edit strings; never re-serialize a document through Nokogiri.
+- Builds never write to `public/assets`: a precompile goes to a temp dir, so a dev server of the same app can run during a build.
+- Output must stay byte-stable. HTML edits such as CSRF stripping work on strings; never re-serialize a document through Nokogiri.
+- Keep the configuration small: add an option only when a site using Kiln needs it.
 - `kiln/content` and `kiln/test_helper` stay outside the Zeitwerk loader: production eager loading must not require commonmarker or Minitest.
 - `test/dummy` is the integration fixture. Its routes feed the coverage check, so every new route needs a param source, a skip, or no params.
 - Run `bin/lint` and `bin/test` for code changes. `bin/house-rules` enforces the writing rules a grep can decide.

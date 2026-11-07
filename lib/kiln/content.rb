@@ -30,10 +30,14 @@
 #   # config/kiln.rb
 #   params :post, -> { Kiln::Content.collection("blog").map { { slug: it.slug } } }
 #
+# Filenames. A leading YYYY-MM-DD or YYYY-MM date sets published_at (a month means its 1st day); a
+# name that is only a date keeps it as the slug. SLUG.LOCALE.md is a translation of the SLUG entry,
+# where LOCALE is two lowercase letters with an optional -XX region (es, pt-BR). Translations stay out
+# of all/find/each: post.translation(:es) returns one or nil, and post.locale is nil or "es".
+#
 # Publishing. Entries with `draft: true` or a future `published_at` (frontmatter or filename date)
 # are hidden. They show in development unless Kiln is building; set Kiln::Content.show_drafts to
-# override. A server-rendered app can share a hidden entry with
-# `posts.find(params[:slug], preview_token: params[:token])`, where the token is `post.preview_token`.
+# override.
 #
 # Source positions. With Kiln::Content.source_positions on, each rendered block of a .md view or
 # collection entry carries data-tensaku-md="path:startLine:startCol-endLine:endCol" for the Tensaku
@@ -41,7 +45,7 @@
 # always off while Kiln is building.
 #
 # Settings: Kiln::Content.root (default Rails.root/content), Kiln::Content.show_drafts,
-# Kiln::Content.preview_secret (default secret_key_base), Kiln::Content.source_positions.
+# Kiln::Content.source_positions.
 begin
   require "commonmarker"
   require "rouge"
@@ -63,7 +67,7 @@ module Kiln
     class NotFound < Kiln::Error; end
 
     class << self
-      attr_writer :root, :show_drafts, :preview_secret, :source_positions
+      attr_writer :root, :show_drafts, :source_positions
 
       def root
         Pathname(@root || Rails.root.join("content"))
@@ -80,10 +84,6 @@ module Kiln
         Rails.env.development? && !defined?(::Tensaku).nil?
       end
 
-      def preview_secret
-        @preview_secret || Rails.application.secret_key_base
-      end
-
       def collection(name)
         dir = root.join(name.to_s)
         if Kiln.building?
@@ -95,7 +95,7 @@ module Kiln
       end
 
       def reset!
-        @root = @show_drafts = @preview_secret = @source_positions = nil
+        @root = @show_drafts = @source_positions = nil
         @collections = {}
       end
 

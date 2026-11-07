@@ -73,23 +73,6 @@ class Kiln::Content::CollectionTest < Kiln::TestCase
     assert_includes post.html, %(<p data-tensaku-md="#{path}:7:1-7:10">Body text.</p>)
   end
 
-  test "find with a preview token returns hidden entries" do
-    token = blog.find_by(slug: "second").preview_token
-    draft_token = Kiln::Content::Entry.new("blog", Kiln::Content.root.join("blog/2024-02-01-draft.md")).preview_token
-
-    assert_equal "draft", blog.find("draft", preview_token: draft_token).slug
-    assert_raises(Kiln::Content::NotFound) { blog.find("draft", preview_token: token) }
-    assert_raises(Kiln::Content::NotFound) { blog.find("draft", preview_token: "") }
-  end
-
-  test "preview tokens are stable and depend on the secret" do
-    token = blog.find("second").preview_token
-    assert_equal token, Kiln::Content.collection("blog").find("second").preview_token
-
-    Kiln::Content.preview_secret = "other"
-    assert_not_equal token, blog.find("second").preview_token
-  end
-
   test "NotFound maps to a 404" do
     assert_equal 404, ActionDispatch::ExceptionWrapper.status_code_for_exception("Kiln::Content::NotFound")
   end
@@ -123,6 +106,50 @@ class Kiln::Content::CollectionTest < Kiln::TestCase
       File.utime(Time.now, Time.now + 10, file)
       assert_equal "one", Kiln::Content.collection("notes").find("a").body
     end
+  end
+
+  test "SLUG.LOCALE.md files are translations, not entries" do
+    now = Kiln::Content.collection("now")
+    august = now.find("2026-08")
+
+    assert_equal %w[2026-08 summer], now.map(&:slug)
+    assert_nil august.locale
+    assert_raises(Kiln::Content::NotFound) { now.find("2026-08.es") }
+
+    spanish = august.translation(:es)
+    assert_equal [ "es", "2026-08", "Agosto" ], [ spanish.locale, spanish.slug, spanish.title ]
+    assert_equal "Agosuto.\n", august.translation("ja").body
+    assert_nil august.translation(:fr)
+    assert_equal "pt-BR", now.find("summer").translation("pt-BR").locale
+  end
+
+  test "hidden translations follow show_drafts" do
+    summer = Kiln::Content.collection("now").find("summer")
+    assert_nil summer.translation(:es)
+
+    Kiln::Content.show_drafts = true
+    assert Kiln::Content.collection("now").find("summer").translation(:es).draft?
+  end
+
+  test "a translation without its entry fails loudly" do
+    Kiln::Content.root = tmp_output
+    tmp_output.join("notes").mkpath
+    tmp_output.join("notes/a.es.md").write("hola")
+
+    error = assert_raises(ArgumentError) { Kiln::Content.collection("notes") }
+    assert_includes error.message, %(no entry has the slug "a")
+  end
+
+  test "filename dates may be YYYY-MM-DD or YYYY-MM" do
+    now = Kiln::Content.collection("now")
+    assert_equal Date.new(2026, 8, 1), now.find("2026-08").published_at
+    assert_equal Date.new(2026, 7, 1), now.find("summer").published_at
+    assert_equal Date.new(2026, 8, 1), now.find("2026-08").translation(:es).published_at
+
+    Kiln::Content.root = tmp_output
+    tmp_output.join("notes").mkpath
+    tmp_output.join("notes/2026-13.md").write("x")
+    assert_raises(ArgumentError) { Kiln::Content.collection("notes") }
   end
 
   test "works as a param source" do

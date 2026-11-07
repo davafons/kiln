@@ -18,6 +18,24 @@ class Kiln::PagesTest < Kiln::TestCase
     assert_raises(ArgumentError) { @pages.params :post, [ { slug: "a" } ] }
   end
 
+  test "value lists build every combination and nil leaves the key out" do
+    @pages.params :archive, locale: [ nil, "es" ], year: -> { [ 2025, 2026 ] }
+    assert_equal [
+      { year: 2025 }, { year: 2026 }, { locale: "es", year: 2025 }, { locale: "es", year: 2026 }
+    ], @pages.sources[:archive].call
+  end
+
+  test "value lists are read at build time" do
+    years = [ 2025 ]
+    @pages.params :archive, year: -> { years }
+    years << 2026
+    assert_equal [ { year: 2025 }, { year: 2026 } ], @pages.sources[:archive].call
+  end
+
+  test "params takes a source or value lists, not both" do
+    assert_raises(ArgumentError) { @pages.params :post, -> { [] }, slug: [ "a" ] }
+  end
+
   test "paginate builds start through the last page" do
     @pages.paginate :posts_page, per: 10, total: -> { 25 }
     assert_equal [ { page: 1 }, { page: 2 }, { page: 3 } ], @pages.sources[:posts_page].call

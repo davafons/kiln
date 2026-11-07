@@ -7,7 +7,7 @@ module Kiln
       # The newline csrf_meta_tags puts between its two tags goes with the first one.
       META_TAG = /<meta\b(?=[^>]*\sname="csrf-(?:param|token)")[^>]*>(?:\n(?=<meta\b[^>]*\sname="csrf-))?/
 
-      def self.call(html, _context = nil)
+      def self.call(html)
         html.gsub(TOKEN_INPUT, "").gsub(META_TAG, "")
       end
     end

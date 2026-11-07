@@ -70,24 +70,11 @@ class Kiln::AssetsTest < Kiln::TestCase
     assert_equal %w[/assets/scoped.js], renderer.requested
   end
 
-  test "strips source maps from JS and CSS when configured" do
+  test "strips source maps from JS and CSS" do
     renderer = StubRenderer.new("/assets/a.js" => "a();\n//# sourceMappingURL=a.js.map\n")
     page "index.html", %(<script src="/assets/a.js"></script>)
     export(renderer:)
     assert_equal "a();\n", tmp_output.join("assets/a.js").read
-
-    @config.strip_source_maps = false
-    export(renderer:)
-    assert_includes tmp_output.join("assets/a.js").read, "sourceMappingURL"
-  end
-
-  test "exports every asset with assets: :all" do
-    @config.assets = :all
-    export
-
-    dummy_app.assets.load_path.assets.each do |asset|
-      assert tmp_output.join("assets", asset.digested_path).file?, "#{asset.logical_path} is exported"
-    end
   end
 
   test "copies public/ without overwriting rendered files" do
@@ -130,21 +117,55 @@ class Kiln::AssetsTest < Kiln::TestCase
     assert_nil Kiln::Assets.precompile(dummy_app), "test env serves assets dynamically"
   end
 
-  test "precompiles in-process and cleans up what it created" do
+  test "precompiles into a temp dir, never public/assets, and cleans up" do
     assets = dummy_app.config.assets
     original = assets.slice(:server, :output_path, :manifest_path)
     assets.server = false
-    assets.output_path = tmp_output.join("public/assets")
-    assets.manifest_path = assets.output_path.join(".manifest.json")
 
     cleanup = Kiln::Assets.precompile(dummy_app)
-    assert assets.manifest_path.file?
-    assert Dir.glob(assets.output_path.join("application-*.css")).any?
+    dir = assets.output_path
+    assert_not_equal original[:output_path], dir
+    assert_equal dir.join(".manifest.json"), assets.manifest_path
+    assert Dir.glob(dir.join("application-*.css")).any?
+    assert_not Rails.root.join("public/assets").exist?
 
     cleanup.call
-    assert_not assets.output_path.exist?
+    assert_not dir.exist?
+    assert_equal original.except(:server), assets.slice(:output_path, :manifest_path)
   ensure
     assets.merge!(original)
+  end
+
+  test "exports precompiled assets from the compile directory" do
+    assets = dummy_app.config.assets
+    original = assets.slice(:server, :output_path, :manifest_path)
+    assets.server = false
+    cleanup = Kiln::Assets.precompile(dummy_app)
+    renderer = StubRenderer.new({})
+    page "logo.html", %(<img src="#{asset_url("logo.svg")}"><img src="/assets/../../Gemfile">)
+    export(renderer:)
+
+    path = asset_url("logo.svg")
+    assert_equal dummy_app.root.join("app/assets/images/logo.svg").binread, tmp_output.join(path.delete_prefix("/")).binread
+    assert_equal [ "/assets/../../Gemfile" ], renderer.requested, "paths outside the compile directory go to the app"
+  ensure
+    cleanup&.call
+    assets.merge!(original)
+  end
+
+  test "reports an app/assets/builds folder created after boot" do
+    builds = dummy_app.root.join("app/assets/builds")
+    assert_nothing_raised { Kiln::Assets.check_builds!(dummy_app) }
+
+    builds.mkpath
+    error = assert_raises(Kiln::Error) { Kiln::Assets.check_builds!(dummy_app) }
+    assert_includes error.message, "app/assets/builds/.keep"
+
+    dummy_app.config.assets.paths << builds
+    assert_nothing_raised { Kiln::Assets.check_builds!(dummy_app) }
+  ensure
+    dummy_app.config.assets.paths.delete(builds)
+    FileUtils.rm_rf(builds)
   end
 
   private

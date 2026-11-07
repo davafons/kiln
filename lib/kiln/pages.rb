@@ -9,7 +9,15 @@ module Kiln
     end
 
     # params :post, -> { Post.all.map { { slug: it.slug } } }
-    def params(route_name, source)
+    # params :health, locale: [ nil, "es", "ja" ]
+    #
+    # Value lists build every combination of their values. A nil value leaves the key out, for
+    # optional segments such as "(:locale)". A list may be a lambda, called at build time.
+    def params(route_name, source = nil, **values)
+      if values.any?
+        raise ArgumentError, "params :#{route_name} takes a source or value lists, not both" if source
+        source = -> { combinations(values) }
+      end
       raise ArgumentError, "params :#{route_name} needs a callable source" unless source.respond_to?(:call)
       @sources[route_name.to_sym] = source
     end
@@ -31,5 +39,11 @@ module Kiln
     end
 
     def declared_names = (sources.keys + skips.keys).uniq
+
+    private
+      def combinations(values)
+        lists = values.map { |key, list| (list.respond_to?(:call) ? list.call : list).to_a.map { { key => it } } }
+        lists.first.product(*lists.drop(1)).map { it.reduce(:merge).compact }
+      end
   end
 end

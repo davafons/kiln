@@ -10,6 +10,9 @@ Rails.application.routes.draw do
   get "search", to: "pages#search", as: :search
   get "private", to: "pages#private_page", as: :private_page
   get "not-found", to: "pages#not_found", as: :not_found
+  scope "(:locale)", locale: /es|ja/ do
+    get "contact", to: "pages#contact", as: :contact
+  end
   mount ->(env) { [ 200, { "content-type" => "text/plain" }, [ "pong" ] ] }, at: "/ping.txt"
 
   get "up" => "rails/health#show", as: :rails_health_check

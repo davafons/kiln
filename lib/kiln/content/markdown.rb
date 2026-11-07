@@ -20,6 +20,16 @@ module Kiln
         path ? SourcePosition.rewrite(html, path, line_offset) : html
       end
 
+      # Renders text that is a single paragraph without the wrapping <p>, for titles and captions.
+      # Text with any other block structure renders as with render.
+      def self.render_inline(text)
+        html = render(text)
+        block = Commonmarker.parse(text.to_s, options: OPTIONS).first_child
+        return html unless block&.type == :paragraph && block.next_sibling.nil?
+
+        html.delete_prefix("<p>").delete_suffix("</p>\n")
+      end
+
       # Swaps a code block for raw HTML highlighted by Rouge, with CSS classes and no inline styles.
       def self.highlight(node, sourcepos:)
         code = node.string_content

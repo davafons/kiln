@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.1.2 (2026-11-07)
+
+Breaking:
+
+- `Kiln.build_cache.fetch` caches only while `Kiln.building?`. Outside a build it runs the block
+  every time. `read`, `write` and `delete` are removed.
+- `assert_repeatable_build` is removed. Use `kiln_build(repeatable: true) { |output| ... }`.
+- In collections, `SLUG.LOCALE.md` (such as `2026-08.es.md`) is a translation of `SLUG.md` instead
+  of its own entry. Translations stay out of `all`, `find` and `each`, and a translation without
+  its entry fails when the collection loads.
+- A collection filename that is only a date, such as `2026-08-01.md`, now sets `published_at`.
+- Removed options: `config.verify` (every build verifies), `config.absolute_urls`,
+  `config.external_links`, `config.processors`, `config.before_build`, `config.after_build`,
+  `config.strip_source_maps` (source maps are always stripped), `config.sitemap` (written whenever
+  `url` is set), `config.host=` (the host comes from `url`, else `localhost`), `config.assets`
+  (only referenced assets are exported), `config.redirects` (always `_redirects`; the
+  `:meta_refresh`, `:both` and `false` modes are gone) and `config.copy_public` (`public/` is always
+  copied).
+- Removed `Kiln::Processors.apply`, `Kiln::Processors::Context`, `Kiln::Build::Context`, and the
+  `AbsoluteUrls` and `ExternalLinks` processors.
+- The content layer drops preview tokens: `Collection#find` takes only a slug, and
+  `Entry#preview_token` and `Kiln::Content.preview_secret` are removed. Drafts and scheduled
+  entries still show in development when Kiln is not building.
+
+Added:
+
+- `params :page, locale: [ nil, "es", "ja" ]` builds every combination of value lists. `nil`
+  leaves the key out, for optional segments. A list may be a lambda, called at build time.
+- `kiln_build(repeatable: true)` builds twice, fails with the diff when the outputs differ, and
+  yields the first output.
+- `entry.translation(:es)` and `entry.locale` in the content layer.
+- Collection filenames may start with a `YYYY-MM` date, which means the 1st of that month.
+- `Kiln::Content::Markdown.render_inline(text)` renders a single paragraph without its `<p>`.
+- `config.cname = true` writes `CNAME` with the host from `config.url`.
+
+Fixed:
+
+- A production build precompiles assets into a temporary directory instead of `public/assets`, so
+  a development server that boots during the build no longer loads the production manifest.
+  Compiled assets are exported from that directory, and the build no longer needs
+  `config.public_file_server.enabled`.
+- When `app/assets/builds` is created after boot (a fresh checkout without
+  `app/assets/builds/.keep`), the build stops with one error that says to track the `.keep` file,
+  instead of one missing-asset error per page.
+
 ## 0.1.1 (2026-11-07)
 
 - Kiln has two tasks, `kiln:build` and `kiln:serve`. `kiln:verify`, `kiln:routes` and `kiln:check` are removed: every build verifies and reports uncovered routes, and committed output can be checked with `git status --porcelain` after a build.

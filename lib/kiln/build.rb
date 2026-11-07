@@ -4,9 +4,6 @@ module Kiln
   # Runs the whole pipeline and returns a Report. Never raises for page-level problems: those go in
   # the report so the build can show every failure at once.
   class Build
-    # Passed to before_build / after_build hooks.
-    Context = Data.define(:output, :env, :manifest, :report)
-
     # Development middleware that injects markup into every HTML response.
     DEV_MIDDLEWARE = %w[Hotwire::Spark::Middleware WebConsole::Middleware Rack::MiniProfiler Rack::LiveReload].freeze
     # Source-position attributes from in-page editors (Herb source attribution, Tensaku).
@@ -35,10 +32,9 @@ module Kiln
         guard_output!
         guard_dev_middleware!
         ensure_secret_key_base
-        guard_static_files!
         cleanup = Assets.precompile(app)
         begin
-          run_hooks(config.before_build_hooks)
+          Assets.check_builds!(app)
           prepare_output
 
           pages = Router.new(app.routes, pages_dsl, report:).pages
@@ -46,16 +42,15 @@ module Kiln
           render_not_found if config.not_found
           report_editor_markup
 
-          Assets.new(renderer:, output:, config:, report:).export
+          Assets.new(renderer:, output:, config:, report:, app:).export
           write_files
-          Assets.copy_public(from: app.root.join("public"), to: output, report:, generated: generated_files) if config.copy_public
-          write_redirects if config.redirects && @redirects.any?
-          Sitemap.new(manifest, url: config.url).write(output) if config.sitemap && config.url
+          Assets.copy_public(from: app.root.join("public"), to: output, report:, generated: generated_files)
+          write_redirects if @redirects.any?
+          Sitemap.new(manifest, url: config.url).write(output) if config.url
           write_cname if config.cname
           write_manifest
 
-          Verifier.new(output, config:).verify(report) if config.verify
-          run_hooks(config.after_build_hooks)
+          Verifier.new(output, config:).verify(report)
         ensure
           cleanup&.call
         end
@@ -78,7 +73,7 @@ module Kiln
         if response.redirect?
           @redirects << Redirects::Entry.new(from: page.path, to: response.location, status: response.status)
         elsif response.success?
-          body = response.html? ? Processors.apply(response.body, Processors::Context.new(path: page.path, config:, response:)) : response.body
+          body = response.html? ? Processors::StripCSRF.call(response.body) : response.body
           @editor_markup << page.path if response.html? && body.match?(EDITOR_MARKUP)
           file = writer.write(page.path, response.content_type, body)
           manifest.add(page.path, file:, body:, content_type: response.content_type, noindex: Sitemap.noindex?(response, body))
@@ -104,14 +99,14 @@ module Kiln
           return report.error(:render, "404 page responded with #{response.status}", path: config.not_found)
         end
 
-        body = Processors.apply(response.body, Processors::Context.new(path: config.not_found, config:, response:))
+        body = Processors::StripCSRF.call(response.body)
         report.wrote(writer.write_file("404.html", body))
       rescue StandardError => error
         report.error(:render, describe(error), path: config.not_found)
       end
 
       def write_redirects
-        Redirects.new(@redirects, mode: config.redirects, writer:, host: config.host, url: config.url).write(output).each { report.wrote(it) }
+        report.wrote(Redirects.new(@redirects, host: config.host).write(output))
       end
 
       # The manifest is build state, not part of the site: it lives in tmp/, and only for the configured
@@ -143,17 +138,12 @@ module Kiln
         [ ("404.html" if config.not_found), ("CNAME" if config.cname), *config.files.keys.map(&:to_s) ].compact
       end
 
+      # config.cname = true takes the host from config.url.
       def write_cname
-        report.wrote(writer.write_file("CNAME", "#{config.cname}\n"))
-      end
+        host = config.cname == true ? config.url && URI(config.url).host : config.cname
+        return report.error(:write, "config.cname = true needs config.url", path: "/CNAME") unless host
 
-      def run_hooks(hooks)
-        context = Context.new(output:, env: Rails.env, manifest:, report:)
-        hooks.each do |hook|
-          hook.call(context)
-        rescue StandardError => error
-          report.error(:hook, describe(error))
-        end
+        report.wrote(writer.write_file("CNAME", "#{host}\n"))
       end
 
       def prepare_output
@@ -186,15 +176,6 @@ module Kiln
         app.config.secret_key_base
       rescue ArgumentError
         app.config.secret_key_base = SecureRandom.hex(64)
-      end
-
-      # After a precompile, assets are fetched from public/assets through ActionDispatch::Static.
-      def guard_static_files!
-        return unless app.config.respond_to?(:assets) && !app.config.assets.server
-        return if app.config.public_file_server.enabled
-
-        raise Kiln::Error, "Kiln fetches compiled assets through the public file server. " \
-          "Set config.public_file_server.enabled = true for the build environment."
       end
 
       def describe(error)

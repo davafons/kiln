@@ -1,6 +1,7 @@
 module Kiln
   # A plain in-memory store that returns the cached objects themselves (no copies), so memoized
-  # repositories and collections keep their state for the whole build.
+  # repositories and collections keep their state for the whole build. Outside a build, fetch runs
+  # the block every time, so a development server never serves stale data.
   class BuildCache
     def initialize
       @store = {}
@@ -8,6 +9,8 @@ module Kiln
     end
 
     def fetch(key)
+      return yield unless Kiln.building?
+
       @mutex.synchronize do
         return @store[key] if @store.key?(key)
 
@@ -15,9 +18,6 @@ module Kiln
       end
     end
 
-    def read(key) = @mutex.synchronize { @store[key] }
-    def write(key, value) = @mutex.synchronize { @store[key] = value }
-    def delete(key) = @mutex.synchronize { @store.delete(key) }
     def clear = @mutex.synchronize { @store.clear }
   end
 end
