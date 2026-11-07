@@ -18,6 +18,9 @@ and writes plain files to `dist/` that any static host can serve.
 
 Requires Ruby 4.0+ and Rails 8.1+.
 
+Releases: push a `vX.Y.Z` tag matching `Kiln::VERSION`. CI runs, then the release workflow publishes
+to RubyGems through trusted publishing.
+
 ## Setup
 
 ```ruby

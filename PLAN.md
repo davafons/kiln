@@ -188,7 +188,7 @@ before_build hook
 - [x] `test/dummy` Rails 8.1 app with Propshaft and importmap, plus a Minitest setup.
 - [x] Lint (rubocop-rails-omakase, like lostcoords-ui) and GitHub Actions CI.
 - [x] jj repo, colocated.
-- [ ] Claim the `kiln` name on RubyGems with a 0.0.1 placeholder.
+- [x] Claim the `kiln` name on RubyGems (published 0.1.0 directly through trusted publishing, no placeholder).
 
 ### Phase 1 — core build
 
