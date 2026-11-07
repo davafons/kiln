@@ -16,18 +16,4 @@ namespace :kiln do
     puts format("Output: %s (%.1fs)", build.output, elapsed)
     exit 1 if report.failure?
   end
-
-  desc "Fail if the committed output differs from a fresh build"
-  task check: :environment do
-    result = Kiln::Check.new.run
-    if result.report.failure?
-      puts result.report
-    elsif result.diff.empty?
-      puts "Kiln check: #{Kiln.config.output_path} is up to date."
-    else
-      puts "Kiln check: #{Kiln.config.output_path} is out of date. Run kiln:build and commit the result."
-      puts result.diff
-    end
-    exit 1 unless result.success?
-  end
 end

@@ -147,21 +147,6 @@ class Kiln::RouterTest < Kiln::TestCase
     assert_equal %w[/posts /posts/page/2], router.pages.map(&:path)
   end
 
-  test "table lists every row" do
-    @pages.skip :search, reason: "dynamic"
-    router = router_for do
-      get "about", to: "pages#about", as: :about
-      get "search", to: "pages#search", as: :search
-      get "posts/:slug", to: "posts#show", as: :post
-    end
-
-    assert_equal <<~TABLE.chomp, router.table
-      about   /about(.:format)        built 1
-      search  /search(.:format)       skipped: dynamic
-      post    /posts/:slug(.:format)  uncovered
-    TABLE
-  end
-
   test "dummy app: every GET route is built or skipped" do
     router = Kiln::Router.new(dummy_app.routes, Kiln.pages, report: @report)
 

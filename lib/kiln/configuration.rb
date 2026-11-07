@@ -24,8 +24,13 @@ module Kiln
     attr_accessor :sitemap
     # Runs the verifier (links, anchors, importmap) after every build.
     attr_accessor :verify
+    # CSS selectors for sample markup whose links the verifier ignores (for example component demos).
+    attr_accessor :verify_skip
     # Copy public/ into the output (minus public/assets).
     attr_accessor :copy_public
+    # Extra files that aren't routes: { "octicons-license.txt" => "vendor/octicons/LICENSE" }.
+    # Sources are relative to Rails.root.
+    attr_accessor :files
 
     attr_reader :before_build_hooks, :after_build_hooks
     attr_writer :host
@@ -45,7 +50,9 @@ module Kiln
       @redirects = :file
       @sitemap = true
       @verify = true
+      @verify_skip = []
       @copy_public = true
+      @files = {}
       @before_build_hooks = []
       @after_build_hooks = []
     end

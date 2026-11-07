@@ -3,7 +3,7 @@ module Kiln
   class Report
     Entry = Data.define(:kind, :message, :path)
 
-    KINDS = %i[uncovered_route render asset broken_link missing_anchor importmap redirect write hook other].freeze
+    KINDS = %i[uncovered_route render editor_markup asset broken_link missing_anchor importmap redirect write hook other].freeze
 
     attr_reader :errors, :warnings, :written
 

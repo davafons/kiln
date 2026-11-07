@@ -3,9 +3,9 @@ require "rack/mime"
 module Kiln
   # Rack app that serves the built output the way a static host would.
   class Server
-    def self.start(root, port:)
+    def self.start(root, port:, host: "localhost")
       require "rackup"
-      Rackup::Handler.default.run(new(root), Host: "localhost", Port: port)
+      Rackup::Handler.default.run(new(root), Host: host, Port: port)
     end
 
     def initialize(root)

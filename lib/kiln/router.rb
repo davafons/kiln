@@ -27,20 +27,6 @@ module Kiln
       @rows
     end
 
-    # Text table for `kiln:routes`.
-    def table
-      lines = rows.map do |row|
-        status = case row.status
-        when :built then "built #{row.count}"
-        when :skipped then "skipped: #{row.reason}"
-        else "uncovered"
-        end
-        [ row.name || "-", row.path, status ]
-      end
-      widths = [ 0, 1 ].map { |i| lines.map { it[i].length }.max.to_i }
-      lines.map { |name, path, status| "#{name.ljust(widths[0])}  #{path.ljust(widths[1])}  #{status}".rstrip }.join("\n")
-    end
-
     private
       attr_reader :dsl, :report
 

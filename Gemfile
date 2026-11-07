@@ -10,7 +10,7 @@ gem "stimulus-rails"
 gem "puma"
 
 # Optional content layer (require "kiln/content")
-gem "redcarpet"
+gem "commonmarker", "~> 2.9"
 gem "rouge"
 
 gem "rubocop-rails-omakase", require: false

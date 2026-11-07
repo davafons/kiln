@@ -2,14 +2,15 @@
 # Optional and independent of the exporter, so server-rendered Rails apps can use it too.
 #
 #   # Gemfile
-#   gem "redcarpet"
+#   gem "commonmarker"
 #   gem "rouge"
 #
 #   # config/initializers/kiln.rb
 #   require "kiln/content"
 #
 # Markdown views. app/views/pages/about.html.md renders through the layout like any view.
-# about.html.md.erb runs ERB first, then Markdown. Code blocks are highlighted by Rouge with CSS
+# about.html.md.erb runs ERB first, then Markdown. commonmarker renders GitHub Flavored Markdown
+# (tables, strikethrough, autolinks, heading ids). Code blocks are highlighted by Rouge with CSS
 # classes, so add a Rouge theme to your stylesheet (`rougify style github`).
 #
 # Collections. content/blog/2024-05-01-hello.md:
@@ -34,14 +35,19 @@
 # override. A server-rendered app can share a hidden entry with
 # `posts.find(params[:slug], preview_token: params[:token])`, where the token is `post.preview_token`.
 #
+# Source positions. With Kiln::Content.source_positions on, each rendered block of a .md view or
+# collection entry carries data-tensaku-md="path:startLine:startCol-endLine:endCol" for the Tensaku
+# editor. .md.erb views get none. It defaults to on in development when Tensaku is loaded, and is
+# always off while Kiln is building.
+#
 # Settings: Kiln::Content.root (default Rails.root/content), Kiln::Content.show_drafts,
-# Kiln::Content.preview_secret (default secret_key_base).
+# Kiln::Content.preview_secret (default secret_key_base), Kiln::Content.source_positions.
 begin
-  require "redcarpet"
+  require "commonmarker"
   require "rouge"
 rescue LoadError => error
-  raise LoadError, "kiln/content needs the redcarpet and rouge gems. " \
-    "Add `gem \"redcarpet\"` and `gem \"rouge\"` to your Gemfile. (#{error.message})"
+  raise LoadError, "kiln/content needs the commonmarker and rouge gems. " \
+    "Add `gem \"commonmarker\"` and `gem \"rouge\"` to your Gemfile. (#{error.message})"
 end
 
 require "kiln"
@@ -57,7 +63,7 @@ module Kiln
     class NotFound < Kiln::Error; end
 
     class << self
-      attr_writer :root, :show_drafts, :preview_secret
+      attr_writer :root, :show_drafts, :preview_secret, :source_positions
 
       def root
         Pathname(@root || Rails.root.join("content"))
@@ -66,6 +72,12 @@ module Kiln
       def show_drafts
         return @show_drafts unless @show_drafts.nil?
         Rails.env.development? && !Kiln.building?
+      end
+
+      def source_positions
+        return false if Kiln.building?
+        return @source_positions unless @source_positions.nil?
+        Rails.env.development? && !defined?(::Tensaku).nil?
       end
 
       def preview_secret
@@ -83,7 +95,7 @@ module Kiln
       end
 
       def reset!
-        @root = @show_drafts = @preview_secret = nil
+        @root = @show_drafts = @preview_secret = @source_positions = nil
         @collections = {}
       end
 

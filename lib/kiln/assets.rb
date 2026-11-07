@@ -12,9 +12,11 @@ module Kiln
 
     class << self
       # Compiles assets in-process when the app does not serve them dynamically. Returns a callable that
-      # removes what the precompile created, or nil when nothing was compiled.
+      # removes what the precompile created, or nil when nothing was compiled. When assets are served
+      # dynamically, still runs the build steps hooked into assets:precompile (tailwindcss:build,
+      # javascript:build, css:build), so a development build never ships stale bundles.
       def precompile(app)
-        return unless precompile?(app)
+        return build_bundles(app) unless precompile?(app)
 
         output_path = Pathname(app.config.assets.output_path)
         created = !output_path.exist?
@@ -54,10 +56,26 @@ module Kiln
       end
 
       private
-        def run_precompile(app)
+        def build_bundles(app)
+          precompile_task(app)&.prerequisite_tasks&.each do |task|
+            next if task.name.end_with?("environment")
+
+            task.reenable
+            task.invoke
+          rescue StandardError => error
+            raise Kiln::Error, "#{task.name} failed: #{error.class}: #{error.message}"
+          end
+          nil
+        end
+
+        def precompile_task(app)
           require "rake"
           app.load_tasks unless Rake::Task.task_defined?("assets:precompile")
-          task = Rake::Task["assets:precompile"]
+          Rake::Task["assets:precompile"] if Rake::Task.task_defined?("assets:precompile")
+        end
+
+        def run_precompile(app)
+          task = precompile_task(app)
           task.reenable
           task.invoke
         rescue StandardError => error

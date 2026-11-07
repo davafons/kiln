@@ -4,11 +4,13 @@ require "kiln/content"
 class Kiln::Content::MarkdownTest < Kiln::TestCase
   FIXTURES = Pathname(__dir__).join("fixtures")
 
+  teardown { Kiln::Content.source_positions = nil }
+
   test "renders markdown with tables, autolinks, strikethrough and heading ids" do
     html = Kiln::Content::Markdown.render("# Hi there\n\n| a |\n|---|\n| 1 |\n\n~~x~~ https://example.com\n")
 
     assert_includes html, %(<h1 id="hi-there">Hi there</h1>)
-    assert_includes html, "<table>"
+    assert_includes html, "<table>\n<thead>\n<tr>\n<th>a</th>"
     assert_includes html, "<del>x</del>"
     assert_includes html, %(<a href="https://example.com">https://example.com</a>)
   end
@@ -41,6 +43,66 @@ class Kiln::Content::MarkdownTest < Kiln::TestCase
     assert_includes html, "<li>item 0</li>\n<li>item 1</li>"
     assert_includes html, "&lt;script&gt;"
     assert_not_includes html, "<script>"
+  end
+
+  test "raw HTML passes through" do
+    assert_includes Kiln::Content::Markdown.render("<div class=\"note\">hi</div>\n"), %(<div class="note">hi</div>)
+  end
+
+  test "source positions are off by default, even in development without Tensaku" do
+    assert_not Kiln::Content.source_positions
+    Rails.env = "development"
+    assert_not Kiln::Content.source_positions
+    assert_not_includes view.render(template: "pages/about"), "data-tensaku-md"
+  ensure
+    Rails.env = "test"
+  end
+
+  test "source positions default to on in development when Tensaku is loaded" do
+    Object.const_set(:Tensaku, Module.new)
+    Rails.env = "development"
+    assert Kiln::Content.source_positions
+  ensure
+    Object.send(:remove_const, :Tensaku)
+    Rails.env = "test"
+  end
+
+  test ".md views mark each block with its source position" do
+    Kiln::Content.source_positions = true
+    html = view.render(template: "pages/about")
+    path = FIXTURES.join("views/pages/about.html.md").relative_path_from(Rails.root)
+
+    assert_includes html, %(<h1 id="about-me" data-tensaku-md="#{path}:1:1-1:10">)
+    assert_includes html, %(<p data-tensaku-md="#{path}:3:1-3:12">)
+    assert_includes html, %(<pre class="highlight ruby" data-tensaku-md="#{path}:5:1-7:3"><code>)
+    assert_includes html, %(<table data-tensaku-md="#{path}:9:1-11:9">)
+    assert_not_includes html, "data-sourcepos"
+  end
+
+  test "source position paths are relative to Rails.root" do
+    html = Kiln::Content::Markdown.render("\nHi\n", path: Rails.root.join("content/a.md"), line_offset: 3)
+    assert_equal %(<p data-tensaku-md="content/a.md:5:1-5:2">Hi</p>\n), html
+  end
+
+  test "only block elements carry source positions" do
+    html = Kiln::Content::Markdown.render("A [link](/x) and *em*\n", path: Rails.root.join("content/a.md"))
+    assert_equal %(<p data-tensaku-md="content/a.md:1:1-1:21">A <a href="/x">link</a> and <em>em</em></p>\n), html
+  end
+
+  test ".md.erb views get no source positions" do
+    Kiln::Content.source_positions = true
+    html = view.render(template: "pages/erb", locals: { title: "From ERB" })
+
+    assert_includes html, %(<h1 id="from-erb">)
+    assert_not_includes html, "data-tensaku-md"
+  end
+
+  test "no source positions while building" do
+    Kiln::Content.source_positions = true
+    Kiln.building! do
+      assert_not Kiln::Content.source_positions
+      assert_not_includes view.render(template: "pages/about"), "data-tensaku-md"
+    end
   end
 
   test "ERB errors keep the template line number" do

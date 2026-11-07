@@ -14,7 +14,7 @@ class Kiln::BuildTest < Kiln::TestCase
     %w[
       index.html about/index.html guide/index.html posts/index.html posts/hello-world/index.html
       posts/second-post/index.html private/index.html feed.xml health.json ping.txt 404.html
-      icon.svg _redirects sitemap.xml kiln-manifest.json
+      icon.svg _redirects sitemap.xml
     ].each { assert tmp_output.join(it).file?, "expected #{it}" }
 
     refute tmp_output.join("search").exist?, "skipped route must not be built"
@@ -43,15 +43,15 @@ class Kiln::BuildTest < Kiln::TestCase
   end
 
   test "redirects, sitemap and manifest" do
-    build
+    result = build
     assert_equal "/old-about /about 301\n", read("_redirects")
 
     sitemap = read("sitemap.xml")
     assert_includes sitemap, "<loc>https://example.com/posts/hello-world</loc>"
     refute_includes sitemap, "/private", "noindex pages stay out of the sitemap"
 
-    manifest = JSON.parse(read("kiln-manifest.json"))
-    assert_equal "posts/hello-world/index.html", manifest["/posts/hello-world"]["file"]
+    assert_equal "posts/hello-world/index.html", result.manifest.entries["/posts/hello-world"][:file]
+    refute tmp_output.join("kiln-manifest.json").exist?, "the manifest is build state, not part of the site"
   end
 
   test "file mode" do
@@ -104,10 +104,24 @@ class Kiln::BuildTest < Kiln::TestCase
     assert_equal [ "RuntimeError: boom" ], report.errors.select { it.kind == :hook }.map { it.message.split(" (").first }
   end
 
-  test "reports pages changed since the previous build" do
-    build
-    second = build
+  test "reports pages changed since the previous build of the configured output" do
+    config = Kiln.config.dup
+    config.output = tmp_output.to_s
+    build(config:)
+    second = build(config:)
+
     assert_equal({ added: [], removed: [], changed: [] }, second.changes)
+    assert Rails.root.join("tmp/kiln-manifest.json").file?
+    assert_nil build.changes, "throwaway builds keep no manifest"
+  end
+
+  test "copies extra files that aren't routes" do
+    config = Kiln.config.dup
+    config.files = { "licenses/post.txt" => "app/models/post.rb", "missing.txt" => "nope.txt" }
+    report = build(config:).report
+
+    assert_equal Rails.root.join("app/models/post.rb").read, read("licenses/post.txt")
+    assert_equal [ "/missing.txt" ], report.errors.select { it.kind == :write }.map(&:path)
   end
 
   test "Kiln.building? and the build cache only live during a build" do
@@ -119,6 +133,36 @@ class Kiln::BuildTest < Kiln::TestCase
     assert inside
     refute Kiln.building?
     assert_nil Kiln.build_cache.read(:x)
+  end
+
+  test "fails when editor source attributes reach the output" do
+    config = Kiln.config.dup
+    config.processors = [ ->(html, _) { html.sub("<main>", '<main data-herb-source="app/views/x.html.erb:1:1">') } ]
+    report = build(config:).report
+
+    errors = report.errors.select { it.kind == :editor_markup }
+    assert_equal 1, errors.size
+    assert_match "data-herb-*", errors.first.message
+    assert_match(/and \d+ more/, errors.first.message)
+  end
+
+  test "refuses to build with development middleware that injects markup" do
+    app = Struct.new(:root, :middleware).new(Rails.root, [ Struct.new(:name).new("Hotwire::Spark::Middleware") ])
+    error = assert_raises(Kiln::Error) { Kiln::Build.new(app:, output: tmp_output).run }
+    assert_match "Hotwire::Spark::Middleware", error.message
+  end
+
+  test "gives an app without a secret_key_base a throwaway one" do
+    config = Class.new do
+      attr_writer :secret_key_base
+
+      def secret_key_base = @secret_key_base || raise(ArgumentError, "Missing `secret_key_base`")
+    end.new
+    app = Struct.new(:root, :middleware, :config).new(Rails.root, [], config)
+    build = Kiln::Build.new(app:, output: tmp_output)
+
+    build.send(:ensure_secret_key_base)
+    assert_equal 128, config.secret_key_base.size
   end
 
   test "refuses to wipe the app" do

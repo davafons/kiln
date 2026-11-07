@@ -1,12 +1,12 @@
 require "test_helper"
 
 class Kiln::VerifierTest < Kiln::TestCase
-  def site(files)
+  def site(files, skip = [])
     files.each do |file, body|
       tmp_output.join(file).dirname.mkpath
       tmp_output.join(file).write(body)
     end
-    config = Kiln::Configuration.new.tap { it.url = "https://example.com" }
+    config = Kiln::Configuration.new.tap { it.url = "https://example.com"; it.verify_skip = skip }
     Kiln::Verifier.new(tmp_output, config:).verify(Kiln::Report.new)
   end
 
@@ -60,5 +60,16 @@ class Kiln::VerifierTest < Kiln::TestCase
       [ :broken_link, "sub", "/about" ],
       [ :importmap, "invalid importmap JSON", "/bad/" ]
     ].sort, errors(report).sort
+  end
+
+  test "ignores links inside verify_skip selectors" do
+    report = site({
+      "index.html" => <<~HTML
+        <div data-example-preview><nav><a href="#general">General</a><a href="/missing">Demo</a></nav></div>
+        <a href="#real">Checked</a>
+      HTML
+    }, [ "[data-example-preview]" ])
+
+    assert_equal [ [ :missing_anchor, "#real", "/" ] ], errors(report)
   end
 end

@@ -179,4 +179,17 @@ class Kiln::AssetsTest < Kiln::TestCase
     def asset_url(name) = ActionController::Base.helpers.asset_path(name)
 
     def written?(pattern) = @report.written.any? { it.match?(pattern) }
+
+  test "runs bundle builds hooked into assets:precompile when assets are served dynamically" do
+    require "rake"
+    dummy_app.load_tasks unless Rake::Task.task_defined?("assets:precompile")
+    runs = 0
+    Rake::Task.define_task("kiln_test:bundle") { runs += 1 }
+    Rake::Task["assets:precompile"].enhance([ "kiln_test:bundle" ])
+
+    2.times { assert_nil Kiln::Assets.precompile(dummy_app) }
+    assert_equal 2, runs, "runs on every build, not once per process"
+  ensure
+    Rake::Task["assets:precompile"].prerequisites.delete("kiln_test:bundle")
+  end
 end

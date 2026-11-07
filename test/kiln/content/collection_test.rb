@@ -63,6 +63,16 @@ class Kiln::Content::CollectionTest < Kiln::TestCase
     Rails.env = "test"
   end
 
+  test "source positions count the frontmatter lines" do
+    post = blog.find("first-post")
+    assert_not_includes post.html, "data-tensaku-md"
+
+    Kiln::Content.source_positions = true
+    path = post.path.relative_path_from(Rails.root)
+    assert_includes post.html, %(<h1 id="hello" data-tensaku-md="#{path}:5:1-5:7">)
+    assert_includes post.html, %(<p data-tensaku-md="#{path}:7:1-7:10">Body text.</p>)
+  end
+
   test "find with a preview token returns hidden entries" do
     token = blog.find_by(slug: "second").preview_token
     draft_token = Kiln::Content::Entry.new("blog", Kiln::Content.root.join("blog/2024-02-01-draft.md")).preview_token

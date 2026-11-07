@@ -9,7 +9,9 @@ module Kiln
         @collection, @path = collection.to_s, Pathname(path)
         match = FILENAME.match(@path.basename.to_s)
         @slug = match[:slug]
-        @attributes, @body = Frontmatter.parse(@path.read)
+        text = @path.read
+        @attributes, @body = Frontmatter.parse(text)
+        @frontmatter_lines = text.delete_suffix(body).count("\n")
         @published_at = attributes["published_at"] || (Date.iso8601(match[:date]) if match[:date])
       end
 
@@ -17,7 +19,12 @@ module Kiln
       def draft? = attributes["draft"] == true
       def scheduled? = published_at.present? && published_at.in_time_zone.future?
       def published? = !draft? && !scheduled?
-      def html = @html ||= Markdown.render(body).html_safe
+
+      def html
+        return Markdown.render(body, path:, line_offset: @frontmatter_lines).html_safe if Content.source_positions
+        @html ||= Markdown.render(body).html_safe
+      end
+
       def to_param = slug
       def [](key) = attributes[key.to_s]
       def to_h = attributes

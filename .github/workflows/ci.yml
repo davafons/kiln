@@ -32,8 +32,8 @@ jobs:
           restore-keys: |
             rubocop-${{ runner.os }}-${{ env.RUBY_VERSION }}-${{ env.DEPENDENCIES_HASH }}-
 
-      - name: Lint code for consistent style
-        run: bin/rubocop -f github
+      - name: Lint Ruby and house rules
+        run: bin/lint
 
   test:
     runs-on: ubuntu-latest

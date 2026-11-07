@@ -1,27 +1,26 @@
-# Kiln
+<h1 align="center">Kiln</h1>
 
-Kiln fires a Rails app into a static site. Build pages with normal Rails (routes, controllers, views,
-helpers, Turbo, Stimulus), then run:
+<p align="center">
+  <a href="https://rubygems.org/gems/kiln"><img src="https://img.shields.io/gem/v/kiln?color=b45d3c" alt="Gem version"></a>
+  <img src="https://img.shields.io/badge/ruby-4.0%2B-cc342d?logo=ruby&amp;logoColor=white" alt="Ruby 4.0+">
+  <img src="https://img.shields.io/badge/rails-8.1%2B-d30001?logo=rubyonrails&amp;logoColor=white" alt="Rails 8.1+">
+  <a href="https://github.com/davafons/kiln/actions/workflows/ci.yml"><img src="https://github.com/davafons/kiln/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
 
-```sh
-RAILS_ENV=production bin/rails kiln:build
-```
+<p align="center">
+  Fire a Rails app into a static site.
+</p>
 
-Kiln renders every GET route through Rack, the same way a browser request goes through your app,
-and writes plain files to `dist/` that any static host can serve.
+<p align="center">
+  <a href="#configuration">Configuration</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
 
-- **Routes are the page list.** A GET route with no params is built automatically. A route with
-  params needs a param source or an explicit `skip`, or the build fails and names it.
-- **Builds fail loudly.** Every render error, missing asset and broken link is collected and printed
-  as one report, and the task exits non-zero.
-- **Kiln knows nothing about your data.** Models and repositories stay ordinary app code.
+Kiln renders every GET route of a Rails app through Rack and writes plain files that any static host can serve. You build pages with normal Rails: routes, controllers, views, helpers, Turbo and Stimulus. Development stays `bin/rails server`.
 
-Requires Ruby 4.0+ and Rails 8.1+.
+Routes are the page list. A route that needs params and has no param source fails the build, and every render error, missing asset and broken link is reported at once. Kiln knows nothing about your data: models and repositories stay ordinary app code.
 
-Releases: push a `vX.Y.Z` tag matching `Kiln::VERSION`. CI runs, then the release workflow publishes
-to RubyGems through trusted publishing.
-
-## Setup
+## Build a site
 
 ```ruby
 # Gemfile
@@ -31,55 +30,75 @@ gem "kiln"
 ```ruby
 # config/kiln.rb
 Kiln.configure do |config|
-  config.url = "https://example.com"   # sitemap, absolute URLs, request host
-  config.not_found = "/404"            # rendered to 404.html
+  config.url = "https://example.com"
+  config.not_found = "/404"
 end
 
 Kiln.pages do
   params :post, -> { Post.published.map { { slug: it.slug } } }
-  params :page, -> { %w[en es ja].map { { locale: it } } + [ {} ] }  # scope "(:locale)"
-  paginate :blog_page, per: 10, total: -> { Post.count }, start: 2  # /blog/page/2 ...
   skip :search, reason: "dynamic"
 end
 ```
 
-`bin/rails kiln:routes` shows every GET route and whether it is built, skipped or uncovered.
+```sh
+RAILS_ENV=production bin/rails kiln:build
+```
 
-Rails internals (`/rails/*`), the health check, mounted engines and turbo-rails' native navigation
-routes are skipped by default. Redirect routes become redirects, and mounted Rack apps are built
-like any other route.
+The site lands in `dist/`. Kiln precompiles assets in-process, renders each page, exports the assets the pages reference, copies `public/`, and writes `_redirects`, `sitemap.xml` and `404.html`. Then it checks every internal link, anchor and importmap module, and exits non-zero on any problem.
 
-## Tasks
+## Declare the pages
 
-| Task | What it does |
-|---|---|
-| `kiln:build` | Renders every page, exports assets, copies `public/`, writes redirects, sitemap and manifest, then verifies the output. Lists pages changed since the last build. `VERBOSE=1` shows request logs. |
-| `kiln:routes` | The route table. Exits 1 if any route is uncovered. |
-| `kiln:verify` | Checks internal links, anchors and importmap modules in the existing output. |
-| `kiln:check` | Builds into a temp dir and fails if the committed output differs. For CI. |
-| `kiln:serve` | Serves the output with static-host path resolution (`PORT`, default 4000). |
+A GET route with no required params is built automatically. A route with params needs a param source:
+
+```ruby
+Kiln.pages do
+  params :post, -> { Post.published.map { { slug: it.slug } } }
+  params :page, -> { %w[en es ja].map { { locale: it } } + [ {} ] }  # scope "(:locale)"
+  paginate :blog_page, per: 10, total: -> { Post.count }, start: 2  # /blog/page/2, /blog/page/3, ...
+  skip :search, reason: "dynamic"
+end
+```
+
+A route that needs params and has neither a param source nor a skip fails the build, and the error names the line to add. Rails internals, the health check, mounted engines and turbo-rails' native navigation routes are skipped by default. Redirect routes become redirects, and mounted Rack apps are built like any other route.
+
+Feeds, `robots.txt`, `llms.txt` and JSON files are ordinary routes with views. The content type picks the extension, so `get "api"` rendering JSON is written as `api.json`.
+
+## Develop and ship
+
+Develop with `bin/rails server` and whatever reloading the app already has, such as Hotwire Spark. Kiln adds no dev server. It has two commands:
+
+```sh
+RAILS_ENV=production bin/rails kiln:build  # write the site; CI and deploys run this
+bin/rails kiln:serve                       # look at the output as a static host serves it
+```
+
+`kiln:build` verifies every internal link, anchor and importmap module, and lists the pages that changed since the previous build. Set `VERBOSE=1` to see request logs. A repository that commits its output can check it in CI: run `kiln:build`, then fail if `git status --porcelain docs` prints anything.
+
+`kiln:serve` uses Cloudflare Pages and GitHub Pages path resolution and applies `_redirects`. It reads `PORT` (default 4000) and `BIND` (default localhost).
 
 ## Configuration
 
 | Option | Default | |
 |---|---|---|
 | `output` | `"dist"` | Relative to `Rails.root`, or absolute. Wiped at the start of every build. |
-| `url` | `nil` | Public base URL. Needed for the sitemap and `absolute_urls`. |
+| `url` | `nil` | Public base URL, for the sitemap and absolute URLs. |
 | `host` | from `url`, else `"localhost"` | Host header sent with every request. |
-| `paths` | `:directory` | `/now` → `now/index.html`. `:file` writes `now.html`. |
-| `assets` | `:referenced` | Only assets the output references (HTML, importmap, CSS `url()`). `:all` exports everything. |
+| `paths` | `:directory` | `/now` becomes `now/index.html`. `:file` writes `now.html`. |
+| `assets` | `:referenced` | Assets the output references (HTML, importmap, CSS `url()`). `:all` exports everything. |
 | `cname` | `nil` | Writes a `CNAME` file. |
 | `not_found` | `nil` | Path rendered to `404.html`. It may respond with 200 or 404. |
-| `redirects` | `:file` | `:file` (`_redirects`), `:meta_refresh` (HTML pages, for GitHub Pages), `:both`, or `false`. |
-| `sitemap` | `true` | Writes `sitemap.xml` (needs `url`). Pages marked `noindex` are left out. |
+| `redirects` | `:file` | `:file` (`_redirects`), `:meta_refresh` (HTML pages for GitHub Pages), `:both`, or `false`. |
+| `sitemap` | `true` | Writes `sitemap.xml` when `url` is set. Pages marked `noindex` stay out. |
+| `files` | `{}` | Files that aren't routes: `{ "octicons-license.txt" => "vendor/octicons/LICENSE" }`. |
 | `strip_source_maps` | `true` | Removes `sourceMappingURL` comments from JS and CSS. |
-| `absolute_urls` | `false` | Makes image URLs (img, srcset, og:/twitter: images) absolute. |
+| `absolute_urls` | `false` | Makes image URLs absolute (img, srcset, og: and twitter: images). |
 | `external_links` | `false` | Adds `target="_blank" rel="noopener"` to links to other hosts. |
-| `processors` | `[]` | Your own HTML processors: `call(html, context)` returning a String. |
+| `processors` | `[]` | Your HTML processors: `call(html, context)` returning a String. |
 | `verify` | `true` | Runs the verifier after every build. |
+| `verify_skip` | `[]` | CSS selectors for sample markup whose links aren't checked, such as `"[data-example-preview]"`. |
 | `copy_public` | `true` | Copies `public/` (minus `public/assets`) into the output. |
 
-Hooks get a context with `output`, `env`, `manifest` and `report`:
+Hooks receive a context with `output`, `env`, `manifest` and `report`:
 
 ```ruby
 Kiln.configure do |config|
@@ -88,22 +107,46 @@ Kiln.configure do |config|
 end
 ```
 
-CSRF tokens and meta tags are always stripped. Everything else in the HTML is left byte for byte as
-the app rendered it.
+CSRF tokens and meta tags are always stripped. The rest of the HTML stays byte for byte as the app rendered it.
 
-## In your app
+## Write views for a build
 
-- `Kiln.building?` is true while a build renders pages. Use it to hide dev-only things.
-- `Kiln.build_cache.fetch(key) { ... }` memoizes for one build and is cleared before and after.
-- Builds run in production. Kiln runs `assets:precompile` in-process when needed and removes
-  `public/assets` afterwards. Assets are fetched through the app, so keep
-  `config.public_file_server.enabled = true` for builds.
-- Use root-absolute asset paths so every page's `<head>` stays identical and Turbo visits never
-  force a full reload.
-- Feeds, `robots.txt`, `llms.txt` or JSON files are ordinary routes with views
-  (`get "feed.xml"`). The file is written under the route's path.
+- `Kiln.building?` is true while a build renders pages. Use it to hide development-only markup.
+- `Kiln.build_cache.fetch(key) { ... }` memoizes for one build and is cleared before and after it.
+- Builds fetch assets through the app, so keep `config.public_file_server.enabled = true` for the build environment.
+- A build in development skips the precompile but still runs the steps hooked into `assets:precompile`, such as `tailwindcss:build`.
+- Development middleware that injects markup (Hotwire Spark, web-console, rack-mini-profiler) fails the build. Load it only under `bin/rails server`.
+- Root-absolute asset paths keep every page's `<head>` identical, so Turbo visits never force a full reload.
 
-## Testing
+## Write in Markdown
+
+The content layer is optional and works in server-rendered apps too. It needs commonmarker and Rouge:
+
+```ruby
+# Gemfile
+gem "commonmarker"
+gem "rouge"
+
+# config/application.rb, after Bundler.require
+require "kiln/content"
+```
+
+`app/views/pages/about.html.md` renders through the layout like any view, and `.md.erb` runs ERB first. commonmarker renders GitHub Flavored Markdown with tables, strikethrough, autolinks and heading ids; raw HTML passes through. Code blocks get Rouge CSS classes.
+
+With `Kiln::Content.source_positions` on, each rendered block of a `.md` view or collection entry carries `data-tensaku-md="path:startLine:startCol-endLine:endCol"` for the Tensaku editor. The format is a draft. `.md.erb` views get none, because ERB shifts the line numbers. The setting defaults to on in development when Tensaku is loaded, and is always off while Kiln is building.
+
+Collections read Markdown files with YAML frontmatter, such as `content/blog/2024-05-01-hello.md`:
+
+```ruby
+posts = Kiln::Content.collection("blog")
+posts.all           # visible entries, newest first
+posts.find("hello") # raises Kiln::Content::NotFound, which Rails maps to a 404
+post.title, post.published_at, post.html, post[:tags]
+```
+
+Entries with `draft: true` or a future `published_at` are hidden, except in development when Kiln is not building. A server-rendered app can share a hidden entry with `posts.find(slug, preview_token: params[:token])`.
+
+## Test the build
 
 ```ruby
 require "kiln/test_helper"
@@ -116,49 +159,27 @@ class StaticSiteTest < ActiveSupport::TestCase
 end
 ```
 
-`kiln_build { |output| ... }` builds into a temp dir, fails with the report on any error and
-yields the output path.
+`kiln_build { |output| ... }` builds into a temp dir, fails with the report on any error, and yields the output path.
 
-## Content layer
+## Known limits
 
-Optional, and it works in server-rendered apps too:
+- Pages render one at a time.
+- Wildcard rules in your own `public/_redirects` are written out, but the verifier and `kiln:serve` only follow exact rules.
+- JS modules are found through the importmap. Relative `import "./x.js"` between files is not followed.
+- Collections read `*.md` files. `.md.erb` works for views only.
 
-```ruby
-# Gemfile
-gem "redcarpet"
-gem "rouge"
+## Develop Kiln
 
-# config/application.rb, after Bundler.require
-require "kiln/content"
+```sh
+bundle install
+bin/test
+bin/lint          # RuboCop and bin/house-rules
 ```
 
-- **Markdown views:** `app/views/pages/about.html.md` renders through the layout like any view.
-  `.md.erb` runs ERB first. Code blocks get Rouge CSS classes (`rougify style github`).
-- **Collections:** `content/blog/2024-05-01-hello.md` with YAML frontmatter.
+`test/dummy` is the Rails app the tests build. `bin/house-rules` rejects em dashes, AI attribution, leftover tool-call markup, filler phrases and dead links in Markdown. [AGENTS.md](AGENTS.md) holds the rules a script cannot check.
 
-  ```ruby
-  posts = Kiln::Content.collection("blog")
-  posts.all                     # visible entries, newest first
-  posts.find("hello")           # raises Kiln::Content::NotFound (a 404)
-  post.title, post.published_at, post.html, post[:tags]
-
-  # config/kiln.rb
-  params :post, -> { Kiln::Content.collection("blog").map { { slug: it.slug } } }
-  ```
-
-- **Publishing:** `draft: true` and future `published_at` entries are hidden, except in
-  development when not building. `Kiln::Content.show_drafts` overrides this. Server-rendered apps
-  can share a hidden entry with `posts.find(slug, preview_token: params[:token])`.
-
-## Limitations in 0.1
-
-- Pages render one at a time. Parallel rendering is planned.
-- Only exact `_redirects` rules count for the verifier and `kiln:serve`. Splat and placeholder
-  rules in your own `public/_redirects` are written out but not followed.
-- JS modules are found through the importmap. Relative `import "./x.js"` between files is not
-  followed.
-- Collections read `*.md` files only (`.md.erb` works for views).
+Releases publish from a `vX.Y.Z` tag that matches `Kiln::VERSION`. CI runs first, then the release workflow publishes to RubyGems through trusted publishing.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Copyright © 2026 David Afonso. Kiln is licensed under the [MIT License](LICENSE).

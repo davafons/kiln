@@ -9,6 +9,7 @@ module Kiln
       @resolver = StaticResolver.new(@output)
       @redirect_sources = Redirects.load(@output.join(Redirects::FILENAME)).map(&:from).to_set
       @anchors = {}
+      @skip = config.verify_skip.join(", ").presence
     end
 
     def verify(report)
@@ -22,8 +23,11 @@ module Kiln
       def check_page(file)
         page = page_path(file)
         doc = parse(@output.join(file))
+        skipped = @skip ? doc.css(@skip).flat_map { [ it, *it.css("*") ] }.to_set : Set.new
 
         doc.xpath("//*[@href or @src or @srcset]").each do |element|
+          next if skipped.include?(element)
+
           urls_in(element).each { check_link(it, page) }
         end
         doc.css('script[type="importmap"]').each { check_importmap(it.text, page) }
