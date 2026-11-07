@@ -21,7 +21,7 @@ PROSE = /\.(md|markdown)\z/
 SKIPPED = %r{\A(Gemfile\.lock|test/dummy/public/|test/dummy/log/|test/dummy/tmp/|tmp/)}
 
 def tracked_files
-  command = File.directory?(".jj") ? %w[jj file list] : %w[git ls-files --cached --others --exclude-standard]
+  command = File.directory?(".jj") ? %w[jj file list] : %w[git ls-files]
   out, status = Open3.capture2(*command)
   abort "house-rules: could not list files" unless status.success?
 
