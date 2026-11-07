@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Dummy" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= yield :head %>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <%= stylesheet_link_tag "application" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body>
+    <nav>
+      <%= link_to "Home", root_path %>
+      <%= link_to "About", about_path %>
+      <%= link_to "Posts", posts_path %>
+      <%= link_to "Feed", feed_path %>
+    </nav>
+    <%= image_tag "logo.svg", alt: "Logo" %>
+    <% unless Kiln.building? %><div id="dev-panel">dev only</div><% end %>
+    <main><%= yield %></main>
+  </body>
+</html>

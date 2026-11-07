@@ -1,0 +1,14 @@
+class PagesController < ApplicationController
+  def home; end
+  def about; end
+  def search; end
+  def private_page; end
+
+  def health
+    render json: { status: "ok", posts: Post.all.size }
+  end
+
+  def not_found
+    render status: :not_found
+  end
+end
