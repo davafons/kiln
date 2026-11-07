@@ -1,6 +1,7 @@
 class PagesController < ApplicationController
   def home; end
   def about; end
+  def guide; end
   def search; end
   def private_page; end
 

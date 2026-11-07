@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
   root "pages#home"
   get "about", to: "pages#about", as: :about
+  get "guide", to: "pages#guide", as: :guide
   get "posts", to: "posts#index", as: :posts
   get "posts/:slug", to: "posts#show", as: :post
   get "feed.xml", to: "posts#feed", as: :feed, defaults: { format: :xml }

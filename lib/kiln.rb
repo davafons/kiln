@@ -47,7 +47,7 @@ module Kiln
 
     # Memoization store that lives for one build. Cleared before and after every build.
     def build_cache
-      @build_cache ||= ActiveSupport::Cache::MemoryStore.new
+      @build_cache ||= BuildCache.new
     end
 
     def reset!

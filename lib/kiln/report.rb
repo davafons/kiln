@@ -30,19 +30,19 @@ module Kiln
     def success? = errors.empty?
     def failure? = !success?
 
-    def to_s
+    def to_s(title: "Kiln build")
       lines = []
       warnings.each { lines << "warning #{format_entry(it)}" }
       if errors.any?
         lines << "" if warnings.any?
-        lines << "Kiln build failed with #{errors.size} #{"error".pluralize(errors.size)}:"
+        lines << "#{title} failed with #{errors.size} #{"error".pluralize(errors.size)}:"
         errors.group_by(&:kind).each do |kind, entries|
           lines << ""
           lines << "  #{kind.to_s.humanize} (#{entries.size})"
           entries.each { lines << "    #{format_entry(it)}" }
         end
       else
-        lines << "Kiln build succeeded: #{written.size} #{"file".pluralize(written.size)} written."
+        lines << "#{title} succeeded: #{written.size} #{"file".pluralize(written.size)} written."
       end
       lines.join("\n")
     end

@@ -7,7 +7,7 @@ module Kiln
     # Passed to before_build / after_build hooks.
     Context = Data.define(:output, :env, :manifest, :report)
 
-    attr_reader :app, :config, :pages_dsl, :output, :report, :manifest
+    attr_reader :app, :config, :pages_dsl, :output, :report, :manifest, :previous_manifest
 
     def initialize(app: Rails.application, config: Kiln.config, pages: Kiln.pages, output: nil)
       @app = app
@@ -19,21 +19,27 @@ module Kiln
       @redirects = []
     end
 
+    # Pages added, removed and changed since the previous build in the same output, or nil.
+    def changes
+      previous_manifest&.diff(manifest)
+    end
+
     def run
       Kiln.building! do
         guard_output!
+        guard_static_files!
         cleanup = Assets.precompile(app)
         begin
           run_hooks(config.before_build_hooks)
           prepare_output
 
           pages = Router.new(app.routes, pages_dsl, report:).pages
-          pages.each { render_page(it) }
+          pages.reject { it.path == config.not_found }.each { render_page(it) }
           render_not_found if config.not_found
 
           Assets.new(renderer:, output:, config:, report:).export
-          Assets.copy_public(from: app.root.join("public"), to: output, report:) if config.copy_public
-          Redirects.new(@redirects, mode: config.redirects, writer:, host: config.host).write(output) if config.redirects && @redirects.any?
+          Assets.copy_public(from: app.root.join("public"), to: output, report:, generated: generated_files) if config.copy_public
+          write_redirects if config.redirects && @redirects.any?
           Sitemap.new(manifest, url: config.url).write(output) if config.sitemap && config.url
           write_cname if config.cname
           manifest.write(output)
@@ -85,6 +91,15 @@ module Kiln
         report.error(:render, describe(error), path: config.not_found)
       end
 
+      def write_redirects
+        Redirects.new(@redirects, mode: config.redirects, writer:, host: config.host, url: config.url).write(output).each { report.wrote(it) }
+      end
+
+      # Files Kiln writes on purpose that may also exist in public/ (Rails ships a public/404.html).
+      def generated_files
+        [ ("404.html" if config.not_found), ("CNAME" if config.cname) ].compact
+      end
+
       def write_cname
         report.wrote(writer.write_file("CNAME", "#{config.cname}\n"))
       end
@@ -99,6 +114,8 @@ module Kiln
       end
 
       def prepare_output
+        previous = output.join(Manifest::FILENAME)
+        @previous_manifest = Manifest.load(previous) if previous.file?
         FileUtils.rm_rf(output)
         FileUtils.mkdir_p(output)
       end
@@ -110,6 +127,15 @@ module Kiln
         if out == root || root.to_s.start_with?("#{out}/") || out.root?
           raise Kiln::Error, "Refusing to use #{out} as the output directory"
         end
+      end
+
+      # After a precompile, assets are fetched from public/assets through ActionDispatch::Static.
+      def guard_static_files!
+        return unless app.config.respond_to?(:assets) && !app.config.assets.server
+        return if app.config.public_file_server.enabled
+
+        raise Kiln::Error, "Kiln fetches compiled assets through the public file server. " \
+          "Set config.public_file_server.enabled = true for the build environment."
       end
 
       def describe(error)

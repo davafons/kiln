@@ -4,7 +4,7 @@ Kiln fires a Rails app into a static site. You build pages with normal Rails (ro
 views, helpers, Turbo, Stimulus). `bin/rails kiln:build` renders every page through the app and writes
 plain files that any static host can serve.
 
-Status: planned, all questions answered (see the decisions log at the end). Nothing is implemented yet.
+Status: phases 0–4 implemented (0.1.0 candidate). Phases 5–6 happen in the lostcoords-ui and davafons.com repos.
 
 ## Why
 
@@ -184,41 +184,41 @@ before_build hook
 
 ### Phase 0 — workspace
 
-- [ ] Gem skeleton: `kiln.gemspec`, `lib/kiln.rb`, version, MIT license, README.
-- [ ] `test/dummy` Rails 8.1 app with Propshaft and importmap, plus a Minitest setup.
-- [ ] Lint (rubocop-rails-omakase, like lostcoords-ui) and GitHub Actions CI.
-- [ ] jj repo, colocated.
+- [x] Gem skeleton: `kiln.gemspec`, `lib/kiln.rb`, version, MIT license, README.
+- [x] `test/dummy` Rails 8.1 app with Propshaft and importmap, plus a Minitest setup.
+- [x] Lint (rubocop-rails-omakase, like lostcoords-ui) and GitHub Actions CI.
+- [x] jj repo, colocated.
 - [ ] Claim the `kiln` name on RubyGems with a 0.0.1 placeholder.
 
 ### Phase 1 — core build
 
-- [ ] Configuration (`output` = `dist`, `host`, `url`, `paths: :directory | :file`, `assets`, `cname`).
-- [ ] `Kiln.pages` DSL and router with the coverage check.
-- [ ] Renderer (Rack), writer, content-type → extension mapping.
-- [ ] Asset collection and fetching through Rack, `public/` copy.
-- [ ] CSRF and source-map processors.
-- [ ] Error report and exit status.
-- [ ] `kiln:build`, `kiln:routes`.
+- [x] Configuration (`output` = `dist`, `host`, `url`, `paths: :directory | :file`, `assets`, `cname`).
+- [x] `Kiln.pages` DSL and router with the coverage check.
+- [x] Renderer (Rack), writer, content-type → extension mapping.
+- [x] Asset collection and fetching through Rack, `public/` copy.
+- [x] CSRF and source-map processors.
+- [x] Error report and exit status.
+- [x] `kiln:build`, `kiln:routes`.
 
 ### Phase 2 — verification
 
-- [ ] Verifier: internal links, anchors, importmap modules (ported from `static_export_test.rb`).
-- [ ] `kiln:check` (committed output is current).
-- [ ] `Kiln::TestHelper` with `assert_repeatable_build` and `assert_page`.
-- [ ] `kiln:serve`.
+- [x] Verifier: internal links, anchors, importmap modules (ported from `static_export_test.rb`).
+- [x] `kiln:check` (committed output is current).
+- [x] `Kiln::TestHelper` with `assert_repeatable_build` and `assert_page`.
+- [x] `kiln:serve`.
 
 ### Phase 3 — extras
 
-- [ ] Sitemap from the manifest, `noindex` handling.
-- [ ] Redirects (`_redirects`, meta refresh), 404 page.
-- [ ] Hooks, custom processors, manifest diff output.
-- [ ] `paginate` param-source helper.
+- [x] Sitemap from the manifest, `noindex` handling.
+- [x] Redirects (`_redirects`, meta refresh), 404 page.
+- [x] Hooks, custom processors, manifest diff output.
+- [x] `paginate` param-source helper.
 
 ### Phase 4 — content layer (optional require: `kiln/content`)
 
-- [ ] `.md` template handler (Redcarpet + Rouge), `.md.erb`.
-- [ ] Frontmatter loader and a small collection API (`Kiln::Content.collection("blog")`).
-- [ ] Drafts, scheduled posts (`published_at` in the future), preview tokens.
+- [x] `.md` template handler (Redcarpet + Rouge), `.md.erb`.
+- [x] Frontmatter loader and a small collection API (`Kiln::Content.collection("blog")`).
+- [x] Drafts, scheduled posts (`published_at` in the future), preview tokens.
 
 ### Phase 5 — lostcoords-ui docs on Kiln
 
