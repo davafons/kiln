@@ -12,21 +12,37 @@ jobs:
   checks:
     uses: ./.github/workflows/ci.yml
 
-  publish:
+  build:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: checks
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
       - name: Check release version
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: ruby -r ./lib/kiln/version -e 'abort "Tag does not match gem version" unless ENV.fetch("RELEASE_TAG") == "v#{Kiln::VERSION}"'
       - run: gem build kiln.gemspec --output kiln.gem
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kiln-gem
+          path: kiln.gem
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: kiln-gem
       - name: Authenticate with RubyGems
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
