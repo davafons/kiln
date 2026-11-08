@@ -23,6 +23,7 @@ class Kiln::SitemapTest < Kiln::TestCase
     manifest = Kiln::Manifest.new
     manifest.add("/", file: "index.html", body: "x", content_type: "text/html")
     manifest.add("/now", file: "now/index.html", body: "x", content_type: "text/html")
+    manifest.add("/later", file: "later.html", body: "x", content_type: "text/html")
     manifest.add("/hidden", file: "hidden/index.html", body: "x", content_type: "text/html", noindex: true)
     manifest.add("/feed.xml", file: "feed.xml", body: "x", content_type: "application/xml")
 
@@ -31,7 +32,8 @@ class Kiln::SitemapTest < Kiln::TestCase
       <?xml version="1.0" encoding="UTF-8"?>
       <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
         <url><loc>https://example.com/</loc></url>
-        <url><loc>https://example.com/now</loc></url>
+        <url><loc>https://example.com/later</loc></url>
+        <url><loc>https://example.com/now/</loc></url>
       </urlset>
     XML
   end

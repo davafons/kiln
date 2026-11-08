@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- The sitemap lists a page written as `now/index.html` at `/now/`, the URL a static host serves it
+  at, instead of `/now`. Pages written as `now.html` keep `/now`.
+
+- `Kiln::Content.file(path)` reads one Markdown file outside the content directory, such as a
+  README or CONTRIBUTING.md, as an entry with frontmatter, `html` and source positions. It is read
+  again when the file changes, and once per build.
+- Highlighted code blocks carry the fence's language as `data-language`, also when Rouge has no
+  lexer for it, so an app can style or wrap a block by language.
+
 - `kiln:build` boots an app without its own secret with `SECRET_KEY_BASE_DUMMY`, so gems that read
   `secret_key_base` while booting (turbo-rails) no longer fail the build.
 

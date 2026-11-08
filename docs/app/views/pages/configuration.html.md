@@ -57,7 +57,7 @@ These steps have no option. Every build:
 - Strips CSRF tokens and the `csrf-param` and `csrf-token` meta tags. The rest of the HTML stays byte for byte as the app rendered it.
 - Copies `public/`, minus `public/assets`. A rendered file with the same path wins, with a warning.
 - Writes `_redirects` when a route redirects.
-- Writes `sitemap.xml` with every HTML page when `url` is set. Pages marked `noindex`, with a robots meta tag or an `X-Robots-Tag` header, are left out.
+- Writes `sitemap.xml` with every HTML page when `url` is set, at the URL its file is served at: `now/index.html` is `/now/`. Pages marked `noindex`, with a robots meta tag or an `X-Robots-Tag` header, are left out.
 - Checks every internal link, anchor and importmap module in the output.
 
 An app without a `secret_key_base` needs none for a build, since the build ships nothing signed. `kiln:build` boots such an app with Rails' dummy secret (`SECRET_KEY_BASE_DUMMY`), so gems that read the secret while booting, such as turbo-rails, work too. An app with `SECRET_KEY_BASE`, `RAILS_MASTER_KEY` or a key file keeps its own secret.

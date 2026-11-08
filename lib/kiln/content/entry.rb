@@ -11,7 +11,7 @@ module Kiln
       attr_reader :collection, :path, :slug, :locale, :attributes, :body, :published_at
 
       def initialize(collection, path)
-        @collection, @path = collection.to_s, Pathname(path)
+        @collection, @path = collection&.to_s, Pathname(path)
         match = FILENAME.match(@path.basename.to_s)
         @locale = match[:locale]
         dated = DATED.match(match[:name])

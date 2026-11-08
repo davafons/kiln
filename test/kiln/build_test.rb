@@ -63,7 +63,7 @@ class Kiln::BuildTest < Kiln::TestCase
     assert_equal "/old-about /about 301\n", read("_redirects")
 
     sitemap = read("sitemap.xml")
-    assert_includes sitemap, "<loc>https://example.com/posts/hello-world</loc>"
+    assert_includes sitemap, "<loc>https://example.com/posts/hello-world/</loc>"
     refute_includes sitemap, "/private", "noindex pages stay out of the sitemap"
 
     assert_equal "posts/hello-world/index.html", result.manifest.entries["/posts/hello-world"][:file]

@@ -31,12 +31,15 @@ module Kiln
       end
 
       # Swaps a code block for raw HTML highlighted by Rouge, with CSS classes and no inline styles.
+      # data-language keeps the fence's language as written, also when Rouge has no lexer for it.
       def self.highlight(node, sourcepos:)
         code = node.string_content
-        lexer = Rouge::Lexer.find_fancy(node.fence_info.split.first.to_s, code) || Rouge::Lexers::PlainText.new
-        position = node.source_position.values_at(:start_line, :start_column, :end_line, :end_column)
-        attribute = %( data-sourcepos="%d:%d-%d:%d") % position if sourcepos
-        html = %(<pre class="highlight #{lexer.tag}"#{attribute}><code>#{Rouge::Formatters::HTML.new.format(lexer.lex(code))}</code></pre>\n)
+        language = node.fence_info.split.first.to_s
+        lexer = Rouge::Lexer.find_fancy(language, code) || Rouge::Lexers::PlainText.new
+        attributes = +""
+        attributes << %( data-language="#{ERB::Util.html_escape(language)}") unless language.empty?
+        attributes << %( data-sourcepos="%d:%d-%d:%d") % node.source_position.values_at(:start_line, :start_column, :end_line, :end_column) if sourcepos
+        html = %(<pre class="highlight #{lexer.tag}"#{attributes}><code>#{Rouge::Formatters::HTML.new.format(lexer.lex(code))}</code></pre>\n)
         node.replace(Commonmarker::Node.new(:html_block, literal: html))
       end
     end

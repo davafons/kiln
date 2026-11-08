@@ -25,14 +25,15 @@ class Kiln::Content::MarkdownTest < Kiln::TestCase
   test "highlights fenced code with CSS classes and no inline styles" do
     html = Kiln::Content::Markdown.render("```ruby\ndef hi = 1\n```\n")
 
-    assert_includes html, %(<pre class="highlight ruby"><code>)
+    assert_includes html, %(<pre class="highlight ruby" data-language="ruby"><code>)
     assert_includes html, %(<span class="k">def</span>)
     assert_not_includes html, "style="
   end
 
-  test "unknown or missing languages fall back to plain text" do
-    assert_includes Kiln::Content::Markdown.render("```nope\n<b>\n```\n"), %(<pre class="highlight plaintext"><code>&lt;b&gt;)
-    assert_includes Kiln::Content::Markdown.render("```\nx\n```\n"), %(<pre class="highlight plaintext">)
+  test "unknown or missing languages fall back to plain text and keep the fence's language" do
+    assert_includes Kiln::Content::Markdown.render("```nope\n<b>\n```\n"), %(<pre class="highlight plaintext" data-language="nope"><code>&lt;b&gt;)
+    assert_includes Kiln::Content::Markdown.render("```\nx\n```\n"), %(<pre class="highlight plaintext"><code>)
+    assert_includes Kiln::Content::Markdown.render("```a\"b x\nx\n```\n"), %(data-language="a&quot;b")
   end
 
   test ".md views render through the layout" do
@@ -81,7 +82,7 @@ class Kiln::Content::MarkdownTest < Kiln::TestCase
 
     assert_includes html, %(<h1 id="about-me" data-tensaku-md="#{path}:1:1-1:10">)
     assert_includes html, %(<p data-tensaku-md="#{path}:3:1-3:12">)
-    assert_includes html, %(<pre class="highlight ruby" data-tensaku-md="#{path}:5:1-7:3"><code>)
+    assert_includes html, %(<pre class="highlight ruby" data-language="ruby" data-tensaku-md="#{path}:5:1-7:3"><code>)
     assert_includes html, %(<table data-tensaku-md="#{path}:9:1-11:9">)
     assert_not_includes html, "data-sourcepos"
   end

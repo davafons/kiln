@@ -24,7 +24,7 @@ module Kiln
       urls = @manifest.entries.filter_map do |path, entry|
         next if entry[:noindex] || entry[:content_type] != "text/html"
 
-        "  <url><loc>#{ERB::Util.html_escape(@url + path)}</loc></url>\n"
+        "  <url><loc>#{ERB::Util.html_escape(@url + served_path(path, entry[:file]))}</loc></url>\n"
       end
 
       File.write(Pathname(output).join(FILENAME), <<~XML)
@@ -34,5 +34,10 @@ module Kiln
       XML
       FILENAME
     end
+
+    private
+      def served_path(path, file)
+        File.basename(file.to_s) == "index.html" ? "/#{file.to_s.delete_suffix("index.html")}" : path
+      end
   end
 end

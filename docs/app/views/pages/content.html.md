@@ -32,7 +32,11 @@ app/views/pages/changelog.html.md.erb
 
 commonmarker renders GitHub Flavored Markdown with tables, strikethrough, autolinks and heading ids. Raw HTML passes through. Headings carry only the `id`, with no anchor link, so the app decides how to link them. This site passes the rendered HTML to `lc_prose(anchors: true)` and `lc_toc(headings:)` from lostcoords-ui for the heading links and the "On this page" list.
 
-Code blocks are highlighted by Rouge with CSS classes and no inline styles, so add a Rouge theme to your stylesheet. `rougify style github` prints one.
+Code blocks are highlighted by Rouge with CSS classes and no inline styles, so add a Rouge theme to your stylesheet. `rougify style github` prints one. Each block keeps its fence's language as written in `data-language`, also when Rouge has no lexer for it:
+
+```html
+<pre class="highlight plaintext" data-language="diagram"><code>…</code></pre>
+```
 
 ## Rendering Markdown in Ruby
 
@@ -80,6 +84,17 @@ end
 ```
 
 During a build, each collection is read once and kept in `Kiln.build_cache`. On a development server, it is read again when a file in its directory is added, removed or changed. Collections read `*.md` files only: `.md.erb` works for views, not collection entries.
+
+## Single files
+
+`Kiln::Content.file(path)` reads one Markdown file anywhere, such as the repository's README or CONTRIBUTING.md, as an entry:
+
+```ruby
+guide = Kiln::Content.file(Rails.root.join("../CONTRIBUTING.md"))
+guide.title, guide.body, guide.html, guide[:description]
+```
+
+The entry has frontmatter, `body` and `html` as in a collection, with source positions when they are on. Its slug is the filename without `.md`. The file is read again when it changes, and once per build.
 
 ## Filenames and dates
 

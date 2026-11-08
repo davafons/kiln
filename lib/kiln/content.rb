@@ -44,6 +44,9 @@
 # editor. .md.erb views get none. It defaults to on in development when Tensaku is loaded, and is
 # always off while Kiln is building.
 #
+# Single files. Kiln::Content.file("../CONTRIBUTING.md") reads one Markdown file outside the content
+# directory as an entry: frontmatter, body, html and source positions.
+#
 # Settings: Kiln::Content.root (default Rails.root/content), Kiln::Content.show_drafts,
 # Kiln::Content.source_positions.
 begin
@@ -94,14 +97,32 @@ module Kiln
         end
       end
 
+      # One Markdown file anywhere, such as a README or CONTRIBUTING.md, as an entry with
+      # frontmatter, html and source positions. Read again when the file changes, once per build.
+      def file(path)
+        path = Pathname(path).expand_path
+        if Kiln.building?
+          Kiln.build_cache.fetch("kiln/content/file/#{path}") { Entry.new(nil, path) }
+        else
+          mtime = path.mtime
+          cached = files[path]
+          cached && cached[0] == mtime ? cached[1] : (files[path] = [ mtime, Entry.new(nil, path) ])[1]
+        end
+      end
+
       def reset!
         @root = @show_drafts = @source_positions = nil
         @collections = {}
+        @files = {}
       end
 
       private
         def collections
           @collections ||= {}
+        end
+
+        def files
+          @files ||= {}
         end
     end
   end
