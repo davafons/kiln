@@ -36,7 +36,7 @@ end
 RAILS_ENV=production bin/rails kiln:build
 ```
 
-The output goes to `dist/`, which is wiped at the start of every build. Add it to `.gitignore` unless you commit the output on purpose. A successful build prints the number of files written, the output path and, from the second build on, the pages added, removed and changed since the previous one:
+The build runs in the environment Rails boots in. `kiln:build` does not set it, because Rails picks the gem groups to load before the task starts, so pass `RAILS_ENV=production` for a site you deploy. The last line of the output names the environment. The output goes to `dist/`. A build writes into a temporary directory next to it and replaces `dist/` only when it succeeds, so a failed build leaves the previous output as it was. Add it to `.gitignore` unless you commit the output on purpose. A successful build prints the number of files written, the output path and, from the second build on, the pages added, removed and changed since the previous one:
 
 ```text
 Kiln build succeeded: 42 files written.
@@ -44,7 +44,7 @@ Pages since last build: 1 added, 0 removed, 2 changed
   added: /blog/hello
   changed: /
   changed: /blog
-Output: /path/to/app/dist (3.1s)
+Output: /path/to/app/dist (production, 3.1s)
 ```
 
 A failed build prints every error, grouped by kind, and exits with status 1. Set `VERBOSE=1` to see the request log while it renders.

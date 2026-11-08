@@ -65,12 +65,12 @@ class Kiln::Content::CollectionTest < Kiln::TestCase
 
   test "source positions count the frontmatter lines" do
     post = blog.find("first-post")
-    assert_not_includes post.html, "data-tensaku-md"
+    assert_not_includes post.html, "data-md-source"
 
     Kiln::Content.source_positions = true
     path = post.path.relative_path_from(Rails.root)
-    assert_includes post.html, %(<h1 id="hello" data-tensaku-md="#{path}:5:1-5:7">)
-    assert_includes post.html, %(<p data-tensaku-md="#{path}:7:1-7:10">Body text.</p>)
+    assert_includes post.html, %(<h1 id="hello" data-md-source="#{path}:5:1-5:7">)
+    assert_includes post.html, %(<p data-md-source="#{path}:7:1-7:10">Body text.</p>)
   end
 
   test "NotFound maps to a 404" do

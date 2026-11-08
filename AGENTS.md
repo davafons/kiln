@@ -18,10 +18,11 @@ Use jj for version control; preserve unrelated work and never use mutating Git c
 Design decisions:
 
 - Two tasks: `kiln:build` and `kiln:serve`. Development is `bin/rails server` with the app's own reloading; Kiln adds no dev server.
-- Builds run in production by default, with `assets:precompile` in-process and `public/assets` removed afterwards.
+- Deployable builds run with `RAILS_ENV=production`, which the task cannot set itself. The precompile runs in-process into a temp dir. Development builds run the bundle builds instead.
 - Ruby >= 4.0 and Rails >= 8.1. Breaking changes are fine; say so in the CHANGELOG.
 - No integrated mode (Kiln never serves the app in production) and no parallel rendering yet.
-- Tensaku depends on `Kiln::Content.root` and on the `data-tensaku-md` format: `path:startLine:startCol-endLine:endCol`, 1-based lines, commonmarker byte columns with an inclusive end, path relative to `Rails.root`, on block elements only, headings without an anchor link. Tell the Tensaku session before changing either.
+- Neither Kiln nor Tensaku depends on the other's code. The shared contract is the `data-md-source` format: `path:startLine:startCol-endLine:endCol`, 1-based lines, commonmarker byte columns with an inclusive end, path relative to `Rails.root`, on block elements only, headings without an anchor link. Tell the Tensaku session before changing it.
+- No hook runs after a build. A file made from other pages is a route that uses `Kiln.render`.
 
 Writing (README, CHANGELOG, comments):
 

@@ -38,6 +38,13 @@ class Kiln::Content::FileTest < Kiln::TestCase
     html = Kiln::Content.file(@path).html
     relative = @path.relative_path_from(Rails.root)
 
-    assert_includes html, %(<p data-tensaku-md="#{relative}:6:1-6:10">Read this.</p>)
+    assert_includes html, %(<p data-md-source="#{relative}:6:1-6:10">Read this.</p>)
+  end
+
+  test "a file whose name does not end in .md raises a clear error" do
+    readme = @dir.join("README")
+    readme.write("# Hi\n")
+    error = assert_raises(ArgumentError) { Kiln::Content.file(readme) }
+    assert_match "must end in .md", error.message
   end
 end

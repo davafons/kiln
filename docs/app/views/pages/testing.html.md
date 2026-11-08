@@ -47,7 +47,7 @@ body = assert_page "/blog", selector: "article h2", text: "Hello"
 
 ## This site's test
 
-The docs app has one test, which builds the whole site twice and checks every page in the page list:
+The docs app's main test builds the whole site twice and checks every page in the page list. Two more use `assert_page` for the navigation and the installation page:
 
 ```ruby
 test "every page is built" do

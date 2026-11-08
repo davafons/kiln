@@ -73,9 +73,23 @@ class Kiln::BuildTest < Kiln::TestCase
   test "file mode" do
     config = Kiln.config.dup
     config.paths = :file
+    # The railtie decides trailing slashes at boot from config.paths; this app boots in :directory.
+    options = Rails.application.routes.default_url_options
+    options.delete(:trailing_slash)
     assert build(config:).report.success?
     assert tmp_output.join("about.html").file?
     assert tmp_output.join("posts/hello-world.html").file?
+    assert_includes read("about.html"), %(href="/posts")
+  ensure
+    options[:trailing_slash] = true
+  end
+
+  test "route helpers link to the served URL in directory mode" do
+    build
+    html = read("posts/index.html")
+    assert_includes html, %(href="/posts/hello-world/")
+    assert_includes html, %(href="/feed.xml")
+    assert_includes html, %(href="/")
   end
 
   test "uncovered routes fail the build and name the route" do
@@ -97,7 +111,7 @@ class Kiln::BuildTest < Kiln::TestCase
     render_errors = result.report.errors.select { it.kind == :render }
     assert_equal %w[/posts/missing-one /posts/missing-two], render_errors.map(&:path)
     assert_match "RoutingError", render_errors.first.message
-    assert tmp_output.join("posts/hello-world/index.html").file?, "good pages are still written"
+    assert_includes result.report.written, "posts/hello-world/index.html", "good pages are still rendered"
   end
 
   test "reports broken links found by the verifier" do
@@ -126,10 +140,11 @@ class Kiln::BuildTest < Kiln::TestCase
   test "copies extra files that aren't routes" do
     config = Kiln.config.dup
     config.files = { "licenses/post.txt" => "app/models/post.rb", "missing.txt" => "nope.txt" }
-    report = build(config:).report
+    assert_equal [ "/missing.txt" ], build(config:).report.errors.select { it.kind == :write }.map(&:path)
 
+    config.files = { "licenses/post.txt" => "app/models/post.rb" }
+    assert build(config:).report.success?
     assert_equal Rails.root.join("app/models/post.rb").read, read("licenses/post.txt")
-    assert_equal [ "/missing.txt" ], report.errors.select { it.kind == :write }.map(&:path)
   end
 
   test "writes CNAME from a string or from the url" do
@@ -143,8 +158,9 @@ class Kiln::BuildTest < Kiln::TestCase
     assert_equal "example.com\n", read("CNAME")
 
     config.url = nil
-    assert_equal [ "/CNAME" ], build(config:).report.errors.map(&:path)
-    assert_not tmp_output.join("sitemap.xml").exist?, "no sitemap without a url"
+    report = build(config:).report
+    assert_equal [ "/CNAME" ], report.errors.map(&:path)
+    assert_not_includes report.written, "sitemap.xml", "no sitemap without a url"
   end
 
   test "Kiln.building? and the build cache only live during a build" do
@@ -167,6 +183,13 @@ class Kiln::BuildTest < Kiln::TestCase
     assert_match(/and \d+ more/, errors.first.message)
   end
 
+  test "fails when content source positions reach the output" do
+    positioned = ->(html) { html.sub("<main>", '<main data-md-source="content/a.md:1:1-1:2">') }
+    report = replace_method(Kiln::Processors::StripCSRF, :call, positioned) { build.report }
+
+    assert_match "data-md-source", report.errors.find { it.kind == :editor_markup }.message
+  end
+
   test "refuses to build with development middleware that injects markup" do
     app = Struct.new(:root, :middleware).new(Rails.root, [ Struct.new(:name).new("Hotwire::Spark::Middleware") ])
     error = assert_raises(Kiln::Error) { Kiln::Build.new(app:, output: tmp_output).run }
@@ -184,6 +207,24 @@ class Kiln::BuildTest < Kiln::TestCase
 
     build.send(:ensure_secret_key_base)
     assert_equal 128, config.secret_key_base.size
+  end
+
+  test "a successful build replaces the output, files from earlier builds included" do
+    tmp_output.join("stale.html").write("old")
+    assert build.report.success?
+    assert_not tmp_output.join("stale.html").exist?
+    assert tmp_output.join("index.html").file?
+    assert_empty Dir[tmp_output.dirname.join(".#{tmp_output.basename}.kiln-build")]
+  end
+
+  test "a failed build leaves the previous output as it was" do
+    tmp_output.join("index.html").write("previous")
+    pages = Kiln::Pages.new.tap { it.skip :search }
+    assert build(pages:).report.failure?
+
+    assert_equal "previous", read("index.html")
+    assert_equal [ "index.html" ], Dir.children(tmp_output)
+    assert_empty Dir[tmp_output.dirname.join(".#{tmp_output.basename}.kiln-build")]
   end
 
   test "refuses to wipe the app" do

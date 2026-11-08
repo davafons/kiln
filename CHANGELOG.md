@@ -1,15 +1,40 @@
 # Changelog
 
-## Unreleased
+## 0.1.3 (2026-11-08)
 
-- The sitemap lists a page written as `now/index.html` at `/now/`, the URL a static host serves it
-  at, instead of `/now`. Pages written as `now.html` keep `/now`.
+Breaking:
 
+- With `paths: :directory`, route helpers add a trailing slash (`about_path` is `/about/`), the URL a
+  static host serves `about/index.html` at. Kiln sets `trailing_slash: true` in the app's
+  `default_url_options` unless the app sets it. Paths with a dot keep no slash.
+- The sitemap lists a page written as `now/index.html` at `/now/` instead of `/now`. Pages written
+  as `now.html` keep `/now`.
+- Source positions use `data-md-source` instead of `data-tensaku-md`, and
+  `Kiln::Content.source_positions` is off until the app turns it on. Kiln no longer checks whether
+  Tensaku is loaded: set `Kiln::Content.source_positions = Rails.env.development?`.
+- `paginate` is removed. A value list does the same:
+  `params :blog_page, page: -> { 2..Post.count.fdiv(10).ceil }`.
+- Highlighted code blocks carry the fence's language as `data-language`, also when Rouge has no
+  lexer for it. Code that matches `<pre class="highlight ..."><code>` with a regex should select
+  `pre.highlight` instead.
+
+- A build writes into `.OUTPUT.kiln-build` next to the output directory and replaces the output
+  only when it succeeds. A failed build leaves the previous output, and `tmp/kiln-manifest.json`,
+  as they were, instead of a half-written directory.
+
+Added:
+
+- `Kiln.render(path)` returns another page's body as the build writes it, for pages made from other
+  pages such as a search index. During a build each page is rendered once, shared between the build
+  and every `Kiln.render` call.
+- `params :post, -> { ... }, locale: [ nil, "es" ]` combines a source with value lists.
 - `Kiln::Content.file(path)` reads one Markdown file outside the content directory, such as a
   README or CONTRIBUTING.md, as an entry with frontmatter, `html` and source positions. It is read
-  again when the file changes, and once per build.
-- Highlighted code blocks carry the fence's language as `data-language`, also when Rouge has no
-  lexer for it, so an app can style or wrap a block by language.
+  again when the file changes, and once per build. A name that does not end in `.md` raises
+  `ArgumentError`.
+- The last line of `kiln:build` names the Rails environment the build ran in.
+
+Fixed:
 
 - `kiln:build` boots an app without its own secret with `SECRET_KEY_BASE_DUMMY`, so gems that read
   `secret_key_base` while booting (turbo-rails) no longer fail the build.

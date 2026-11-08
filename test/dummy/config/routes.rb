@@ -5,6 +5,7 @@ Rails.application.routes.draw do
   get "posts", to: "posts#index", as: :posts
   get "posts/:slug", to: "posts#show", as: :post
   get "feed.xml", to: "posts#feed", as: :feed, defaults: { format: :xml }
+  get "titles.json", to: "pages#titles", as: :titles, defaults: { format: :json }
   get "health.json", to: "pages#health", as: :health, defaults: { format: :json }
   get "old-about", to: redirect("/about"), as: :old_about
   get "search", to: "pages#search", as: :search

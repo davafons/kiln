@@ -11,7 +11,7 @@ The output is a directory of plain files. Any static host can serve it. This pag
 | `CNAME` | `cname` is set | GitHub Pages, for a custom domain. |
 | `sitemap.xml` | `url` is set | Search engines. |
 
-With the default `paths: :directory`, `/about` is written to `about/index.html`. Cloudflare Pages and GitHub Pages both serve that file at `/about`, and `bin/rails kiln:serve` resolves paths the same way.
+With the default `paths: :directory`, `/about` is written to `about/index.html`. Cloudflare Pages and GitHub Pages both serve that file at `/about/` and redirect `/about` there, and `bin/rails kiln:serve` resolves paths the same way. Route helpers write `/about/` in this mode, so links skip the redirect (see [Declaring pages](/pages/#routes-without-params)). With `paths: :file`, `/about` is written to `about.html` and served at `/about`.
 
 ## Cloudflare Pages
 
@@ -72,4 +72,4 @@ RAILS_ENV=production bin/rails kiln:build
 test -z "$(git status --porcelain docs)"
 ```
 
-Set `output` to the committed directory, such as `config.output = "docs"`. Kiln wipes that directory at the start of every build, so keep nothing else in it. A build that renders the same bytes as last time leaves Git with nothing to report, which is what `kiln_build(repeatable: true)` checks in tests.
+Set `output` to the committed directory, such as `config.output = "docs"`. A successful build replaces that directory entirely, so keep nothing else in it. A failed build leaves it untouched. A build that renders the same bytes as last time leaves Git with nothing to report, which is what `kiln_build(repeatable: true)` checks in tests.

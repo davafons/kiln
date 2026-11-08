@@ -28,7 +28,7 @@ app/views/pages/about.html.md
 app/views/pages/changelog.html.md.erb
 ```
 
-`.md.erb` runs ERB first, then Markdown. Every page on this site is a `.html.md` view, and the installation page is `.html.md.erb` so it can print `Kiln::VERSION`.
+`.md.erb` runs ERB first, then Markdown. Every documentation page on this site is a `.html.md` view, and the installation page is `.html.md.erb` so it can print `Kiln::VERSION`. The landing page, the 404 page and `llms.txt` are ERB views.
 
 commonmarker renders GitHub Flavored Markdown with tables, strikethrough, autolinks and heading ids. Raw HTML passes through. Headings carry only the `id`, with no anchor link, so the app decides how to link them. This site passes the rendered HTML to `lc_prose(anchors: true)` and `lc_toc(headings:)` from lostcoords-ui for the heading links and the "On this page" list.
 
@@ -94,11 +94,11 @@ guide = Kiln::Content.file(Rails.root.join("../CONTRIBUTING.md"))
 guide.title, guide.body, guide.html, guide[:description]
 ```
 
-The entry has frontmatter, `body` and `html` as in a collection, with source positions when they are on. Its slug is the filename without `.md`. The file is read again when it changes, and once per build.
+The entry has frontmatter, `body` and `html` as in a collection, with source positions when they are on. Its slug comes from the filename by the same rules as a collection entry (see Filenames and dates). A file whose name does not end in `.md` raises `ArgumentError`. The file is read again when it changes, and once per build.
 
 ## Filenames and dates
 
-A filename that starts with a `YYYY-MM-DD` or `YYYY-MM` date sets `published_at`, and the rest of the name is the slug. A month-only date means the 1st of that month. A filename that is only a date, such as `2026-08.md`, keeps the date as its slug. A `published_at` in the frontmatter wins over the filename.
+The slug is the filename without `.md` and without a `.LOCALE` suffix. A filename that starts with a `YYYY-MM-DD` or `YYYY-MM` date sets `published_at`, and the rest of the name is the slug. A month-only date means the 1st of that month. A filename that is only a date, such as `2026-08.md`, keeps the date as its slug. A `published_at` in the frontmatter wins over the filename.
 
 ## Translations
 
@@ -115,12 +115,19 @@ A translation whose entry does not exist fails when the collection loads.
 
 Entries with `draft: true` or a future `published_at` are hidden. They show in development when Kiln is not building, so a draft can be previewed on `bin/rails server` and never reaches a build. Set `Kiln::Content.show_drafts` to `true` or `false` to override that.
 
-## Tensaku source positions
+## Source positions
 
-With `Kiln::Content.source_positions` on, each rendered block of a `.md` view or collection entry carries a `data-tensaku-md` attribute for the [Tensaku](https://tensaku.lostcoords.com) editor:
+With `Kiln::Content.source_positions` on, each rendered block of a `.md` view or collection entry carries a `data-md-source` attribute, for in-page editors such as [Tensaku](https://tensaku.lostcoords.com):
 
 ```html
-<p data-tensaku-md="app/views/pages/about.html.md:3:1-3:42">…</p>
+<p data-md-source="app/views/pages/about.html.md:3:1-3:42">…</p>
 ```
 
-The value is the path relative to `Rails.root`, then the start and end line and column. The format is a draft. `.md.erb` views get none, because ERB shifts the line numbers. The setting defaults to on in development when Tensaku is loaded, and it is always off while Kiln is building, so the attributes never reach the output.
+The value is the path relative to `Rails.root`, then the start and end line and column. Lines start at 1, columns are byte columns from commonmarker, and the end is inclusive. Only block elements carry it: `p`, `h1` to `h6`, `ul`, `ol`, `li`, `blockquote`, `pre`, `table` and `hr`. `.md.erb` views get none, because ERB shifts the line numbers.
+
+The setting is off until the app turns it on, and always off while Kiln is building, so the attributes never reach the output. To use it in development:
+
+```ruby
+# config/initializers/kiln.rb
+Kiln::Content.source_positions = Rails.env.development?
+```

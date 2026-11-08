@@ -6,8 +6,9 @@ module Kiln
   class Build
     # Development middleware that injects markup into every HTML response.
     DEV_MIDDLEWARE = %w[Hotwire::Spark::Middleware WebConsole::Middleware Rack::MiniProfiler Rack::LiveReload].freeze
-    # Source-position attributes from in-page editors (Herb source attribution, Tensaku).
-    EDITOR_MARKUP = /\sdata-(?:herb|tensaku)-[\w-]+=/
+    # Source-position attributes for in-page editors: Herb source attribution, Tensaku, and the content
+    # layer's own data-md-source.
+    EDITOR_MARKUP = /\sdata-(?:herb-[\w-]+|tensaku-[\w-]+|md-source)=/
 
     attr_reader :app, :config, :pages_dsl, :output, :report, :manifest, :previous_manifest
 
@@ -16,6 +17,9 @@ module Kiln
       @config = config
       @pages_dsl = pages
       @output = Pathname(output || config.output_path(app.root))
+      # Pages are written here and replace the output only when the whole build succeeds, so a failed
+      # build leaves the previous output as it was.
+      @stage = @output.dirname.join(".#{@output.basename}.kiln-build")
       @report = Report.new
       @manifest = Manifest.new
       @redirects = []
@@ -28,7 +32,7 @@ module Kiln
     end
 
     def run
-      Kiln.building! do
+      Kiln.building!(renderer:) do
         guard_output!
         guard_dev_middleware!
         ensure_secret_key_base
@@ -42,17 +46,18 @@ module Kiln
           render_not_found if config.not_found
           report_editor_markup
 
-          Assets.new(renderer:, output:, config:, report:, app:).export
+          Assets.new(renderer:, output: @stage, config:, report:, app:).export
           write_files
-          Assets.copy_public(from: app.root.join("public"), to: output, report:, generated: generated_files)
+          Assets.copy_public(from: app.root.join("public"), to: @stage, report:, generated: generated_files)
           write_redirects if @redirects.any?
-          Sitemap.new(manifest, url: config.url).write(output) if config.url
+          Sitemap.new(manifest, url: config.url).write(@stage) if config.url
           write_cname if config.cname
-          write_manifest
 
-          Verifier.new(output, config:).verify(report)
+          Verifier.new(@stage, config:).verify(report)
+          publish if report.success?
         ensure
           cleanup&.call
+          FileUtils.rm_rf(@stage)
         end
       end
       report
@@ -64,11 +69,11 @@ module Kiln
       end
 
       def writer
-        @writer ||= Writer.new(output, mode: config.paths)
+        @writer ||= Writer.new(@stage, mode: config.paths)
       end
 
       def render_page(page)
-        response = renderer.get(page.path)
+        response = Kiln.response_for(page.path)
 
         if response.redirect?
           @redirects << Redirects::Entry.new(from: page.path, to: response.location, status: response.status)
@@ -89,12 +94,13 @@ module Kiln
         return if @editor_markup.empty?
 
         pages = @editor_markup.first(3).join(", ") + (@editor_markup.size > 3 ? " and #{@editor_markup.size - 3} more" : "")
-        report.error(:editor_markup, "data-herb-* or data-tensaku-* attributes reached #{pages}. " \
-          "Turn off Herb source attribution and Tensaku outside development, or build in production.")
+        report.error(:editor_markup, "data-herb-*, data-tensaku-* or data-md-source attributes reached #{pages}. " \
+          "Turn off Herb source attribution, Tensaku and Kiln::Content.source_positions outside development, " \
+          "or build in production.")
       end
 
       def render_not_found
-        response = renderer.get(config.not_found)
+        response = Kiln.response_for(config.not_found)
         unless [ 200, 404 ].include?(response.status)
           return report.error(:render, "404 page responded with #{response.status}", path: config.not_found)
         end
@@ -106,7 +112,7 @@ module Kiln
       end
 
       def write_redirects
-        report.wrote(Redirects.new(@redirects, host: config.host).write(output))
+        report.wrote(Redirects.new(@redirects, host: config.host).write(@stage))
       end
 
       # The manifest is build state, not part of the site: it lives in tmp/, and only for the configured
@@ -149,8 +155,14 @@ module Kiln
       def prepare_output
         previous = manifest_dir&.join(Manifest::FILENAME)
         @previous_manifest = Manifest.load(previous) if previous&.file?
+        FileUtils.rm_rf(@stage)
+        FileUtils.mkdir_p(@stage)
+      end
+
+      def publish
         FileUtils.rm_rf(output)
-        FileUtils.mkdir_p(output)
+        File.rename(@stage, output)
+        write_manifest
       end
 
       # Refuse to wipe anything that contains the app.

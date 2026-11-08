@@ -16,7 +16,7 @@ The same app can also run as a normal Rails server. Kiln adds a rake task and a 
 
 ## Routes are the page list
 
-Kiln reads the routes, not a list of files. A GET route without required params becomes a page on its own. A route with params, such as `get "blog/:slug"`, needs a param source in `config/kiln.rb` that lists the values to build. A route that needs params and has neither a source nor a skip fails the build, and the error names the line to add. [Declaring pages](/pages) covers the details.
+Kiln reads the routes, not a list of files. A GET route without required params becomes a page on its own. A route with params, such as `get "blog/:slug"`, needs a param source in `config/kiln.rb` that lists the values to build. A route that needs params and has neither a source nor a skip fails the build, and the error names the line to add. [Declaring pages](/pages/) covers the details.
 
 ## The build fails loudly
 
@@ -24,7 +24,7 @@ A build collects every problem and reports them together: render errors, pages t
 
 ## Kiln knows nothing about your data
 
-Kiln has no models, data sources or collections in its core. Your models, repositories and Markdown files stay ordinary app code, and param sources are plain lambdas that call them. The optional [content layer](/content) renders Markdown views and reads Markdown collections, and it works the same in an app that is never built statically.
+Kiln has no models, data sources or collections in its core. Your models, repositories and Markdown files stay ordinary app code, and param sources are plain lambdas that call them. The optional [content layer](/content/) renders Markdown views and reads Markdown collections, and it works the same in an app that is never built statically.
 
 ## What a build does
 
@@ -34,7 +34,7 @@ Kiln has no models, data sources or collections in its core. Your models, reposi
 4. Exports the assets the pages reference, copies `public/`, and writes `_redirects`, `sitemap.xml`, `404.html` and `CNAME` when they apply.
 5. Checks every internal link, anchor and importmap module in the output.
 
-[Configuration](/configuration) lists what each step writes and the options that change it.
+[Configuration](/configuration/) lists what each step writes and the options that change it.
 
 ## Requirements
 

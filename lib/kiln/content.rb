@@ -1,54 +1,8 @@
-# Kiln content layer: Markdown views and Markdown collections with YAML frontmatter.
-# Optional and independent of the exporter, so server-rendered Rails apps can use it too.
-#
-#   # Gemfile
-#   gem "commonmarker"
-#   gem "rouge"
-#
-#   # config/initializers/kiln.rb
-#   require "kiln/content"
-#
-# Markdown views. app/views/pages/about.html.md renders through the layout like any view.
-# about.html.md.erb runs ERB first, then Markdown. commonmarker renders GitHub Flavored Markdown
-# (tables, strikethrough, autolinks, heading ids). Code blocks are highlighted by Rouge with CSS
-# classes, so add a Rouge theme to your stylesheet (`rougify style github`).
-#
-# Collections. content/blog/2024-05-01-hello.md:
-#
-#   ---
-#   title: Hello
-#   tags: [rails]
-#   ---
-#   # Hello
-#
-#   posts = Kiln::Content.collection("blog")
-#   posts.all                     # visible entries, newest first
-#   posts.find("hello")           # raises Kiln::Content::NotFound (a 404 in Rails)
-#   posts.find_by(slug: "hello")  # or nil
-#   post.slug, post.title, post.published_at, post.draft?, post.body, post.html, post[:tags], post.tags
-#
-#   # config/kiln.rb
-#   params :post, -> { Kiln::Content.collection("blog").map { { slug: it.slug } } }
-#
-# Filenames. A leading YYYY-MM-DD or YYYY-MM date sets published_at (a month means its 1st day); a
-# name that is only a date keeps it as the slug. SLUG.LOCALE.md is a translation of the SLUG entry,
-# where LOCALE is two lowercase letters with an optional -XX region (es, pt-BR). Translations stay out
-# of all/find/each: post.translation(:es) returns one or nil, and post.locale is nil or "es".
-#
-# Publishing. Entries with `draft: true` or a future `published_at` (frontmatter or filename date)
-# are hidden. They show in development unless Kiln is building; set Kiln::Content.show_drafts to
-# override.
-#
-# Source positions. With Kiln::Content.source_positions on, each rendered block of a .md view or
-# collection entry carries data-tensaku-md="path:startLine:startCol-endLine:endCol" for the Tensaku
-# editor. .md.erb views get none. It defaults to on in development when Tensaku is loaded, and is
-# always off while Kiln is building.
-#
-# Single files. Kiln::Content.file("../CONTRIBUTING.md") reads one Markdown file outside the content
-# directory as an entry: frontmatter, body, html and source positions.
-#
-# Settings: Kiln::Content.root (default Rails.root/content), Kiln::Content.show_drafts,
-# Kiln::Content.source_positions.
+# Kiln content layer: Markdown views (.html.md, .html.md.erb), collections of Markdown files with
+# YAML frontmatter, and single Markdown files. Optional and independent of the exporter, so
+# server-rendered Rails apps can use it too. Load it with `require "kiln/content"` after adding the
+# commonmarker and rouge gems. The content page of the docs (docs/app/views/pages/content.html.md)
+# describes every feature; comments here cover only what the code does not show.
 begin
   require "commonmarker"
   require "rouge"
@@ -83,8 +37,7 @@ module Kiln
 
       def source_positions
         return false if Kiln.building?
-        return @source_positions unless @source_positions.nil?
-        Rails.env.development? && !defined?(::Tensaku).nil?
+        @source_positions == true
       end
 
       def collection(name)

@@ -3,8 +3,8 @@
   <h1 class="<%= lc_heading_class(size: :display, extra: "max-w-2xl sm:text-5xl sm:leading-tight") %>">Fire a Rails app into a static site.</h1>
   <p class="<%= lc_text_class(tone: :muted, extra: "max-w-2xl text-lg") %>">Kiln renders every GET route of a Rails app through Rack and writes plain files that any static host can serve. You keep routes, controllers, views, Turbo and Stimulus, and develop with <code>bin/rails server</code>.</p>
   <div class="flex flex-wrap gap-related pt-related">
-    <%= lc_button_link_to "Read the docs", "/introduction", size: :lg %>
-    <%= lc_button_link_to "Install", "/installation", variant: :outline, size: :lg %>
+    <%= lc_button_link_to "Read the docs", page_path("introduction"), size: :lg %>
+    <%= lc_button_link_to "Install", page_path("installation"), variant: :outline, size: :lg %>
   </div>
 </section>
 

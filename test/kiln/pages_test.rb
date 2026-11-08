@@ -32,26 +32,19 @@ class Kiln::PagesTest < Kiln::TestCase
     assert_equal [ { year: 2025 }, { year: 2026 } ], @pages.sources[:archive].call
   end
 
-  test "params takes a source or value lists, not both" do
-    assert_raises(ArgumentError) { @pages.params :post, -> { [] }, slug: [ "a" ] }
+  test "a source with value lists combines every source hash with every combination" do
+    @pages.params :archive, -> { [ { year: 2025 }, { year: 2026 } ] }, locale: [ nil, "es" ]
+    assert_equal [
+      { year: 2025 }, { year: 2025, locale: "es" }, { year: 2026 }, { year: 2026, locale: "es" }
+    ], @pages.sources[:archive].call
   end
 
-  test "paginate builds start through the last page" do
-    @pages.paginate :posts_page, per: 10, total: -> { 25 }
-    assert_equal [ { page: 1 }, { page: 2 }, { page: 3 } ], @pages.sources[:posts_page].call
+  test "params needs a source or value lists" do
+    assert_raises(ArgumentError) { @pages.params :post }
   end
 
-  test "paginate always builds the start page" do
-    @pages.paginate :posts_page, per: 10, total: -> { 0 }, param: :n, start: 2
-    assert_equal [ { n: 2 } ], @pages.sources[:posts_page].call
-  end
-
-  test "paginate with a custom start" do
-    @pages.paginate :posts_page, per: 5, total: -> { 11 }, start: 2
-    assert_equal [ { page: 2 }, { page: 3 } ], @pages.sources[:posts_page].call
-  end
-
-  test "paginate rejects a non-positive per" do
-    assert_raises(ArgumentError) { @pages.paginate :posts_page, per: 0, total: -> { 1 } }
+  test "a value list may be a range, for pagination" do
+    @pages.params :blog_page, page: -> { 2..25.fdiv(10).ceil }
+    assert_equal [ { page: 2 }, { page: 3 } ], @pages.sources[:blog_page].call
   end
 end

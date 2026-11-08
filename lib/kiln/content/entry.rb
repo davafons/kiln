@@ -12,7 +12,7 @@ module Kiln
 
       def initialize(collection, path)
         @collection, @path = collection&.to_s, Pathname(path)
-        match = FILENAME.match(@path.basename.to_s)
+        match = FILENAME.match(@path.basename.to_s) or raise ArgumentError, "#{@path} is not a Markdown file: its name must end in .md"
         @locale = match[:locale]
         dated = DATED.match(match[:name])
         @slug = (dated && dated[:slug]) || match[:name]

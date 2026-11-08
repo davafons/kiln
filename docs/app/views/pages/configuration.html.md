@@ -16,9 +16,9 @@ That is this site's configuration. Kiln has seven options, and every one has a d
 
 | Option | Default | What it does |
 |---|---|---|
-| `output` | `"dist"` | The output directory, relative to `Rails.root` or absolute. It is wiped at the start of every build. |
+| `output` | `"dist"` | The output directory, relative to `Rails.root` or absolute. A successful build replaces it entirely. A failed build leaves it as it was. |
 | `url` | `nil` | The public base URL. Its host is sent with every request (`localhost` without it), and `sitemap.xml` is written only when it is set. |
-| `paths` | `:directory` | `/now` is written to `now/index.html`. `:file` writes `now.html`. |
+| `paths` | `:directory` | `/now` is written to `now/index.html`, and route helpers add a trailing slash. `:file` writes `now.html`. |
 | `cname` | `nil` | Writes a `CNAME` file with this host. `true` takes the host from `url`. |
 | `not_found` | `nil` | The path rendered to `404.html`. It may respond with 200 or 404. |
 | `files` | `{}` | Files that are not routes, copied into the output: `{ "octicons-license.txt" => "vendor/octicons/LICENSE" }`. Sources are relative to `Rails.root`. |
@@ -38,7 +38,7 @@ The host of `url` is the `Host` header of every request a build sends, and links
 
 ### not_found
 
-The page at this path is rendered to `404.html` and left out of the normal page list and the sitemap. It may respond with 200 or 404; any other status is an error. Rails apps ship a `public/404.html`, and the rendered page replaces it without a warning.
+The page at this path is rendered to `404.html` and left out of the normal page list and the sitemap. It may respond with 200 or 404; any other status is an error. Rails apps ship a `public/404.html`, and the rendered page replaces it without a warning. `CNAME` and the targets of `files` also replace a file at the same path in `public/` without a warning.
 
 ### files
 

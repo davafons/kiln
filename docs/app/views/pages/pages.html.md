@@ -15,6 +15,8 @@ get "blog", to: "posts#index"
 
 With the default `paths: :directory`, `/` is written to `index.html` and `/about` to `about/index.html`. Optional segments that are left out, such as `(:locale)`, don't count as required.
 
+Static hosts serve `about/index.html` at `/about/`, so in `:directory` mode Kiln sets `trailing_slash: true` in the app's `default_url_options`: `about_path` returns `/about/`, on a development server too. Paths with a dot, such as `/feed.xml`, keep no slash. An app that sets `trailing_slash` in `Rails.application.routes.default_url_options` keeps its own value.
+
 ## Param sources
 
 A route with required params needs a param source, keyed by the route name. The source is a lambda that returns a list of hashes, one per page:
@@ -44,13 +46,19 @@ Kiln.pages do
 end
 ```
 
-A `nil` value leaves the key out, which fills an optional segment such as `(:locale)` with nothing. So the first line builds `/page`, `/es/page` and `/ja/page`. A list may be a lambda, called at build time. `params` takes a source or value lists, not both.
+A `nil` value leaves the key out, which fills an optional segment such as `(:locale)` with nothing. So the first line builds `/page`, `/es/page` and `/ja/page`. A list may be a lambda, called at build time.
+
+A source and value lists together combine every hash from the source with every combination:
+
+```ruby
+params :post, -> { Post.all.map { { slug: it.slug } } }, locale: [ nil, "es" ]  # /blog/x and /es/blog/x
+```
 
 This site uses a value list: one route, `get ":slug"`, serves every documentation page, and `config/kiln.rb` lists the slugs with `params :page, slug: -> { Docs::PAGES.map(&:slug) }`.
 
 ## Pagination
 
-`paginate` declares the pages of a paginated route:
+A paginated route is a value list over its page numbers:
 
 ```ruby
 # config/routes.rb
@@ -59,11 +67,11 @@ get "blog/page/:page", to: "posts#index", as: :blog_page
 
 # config/kiln.rb
 Kiln.pages do
-  paginate :blog_page, per: 10, total: -> { Post.count }, start: 2
+  params :blog_page, page: -> { 2..Post.count.fdiv(10).ceil }
 end
 ```
 
-It builds pages from `start` to the last page, which is `total` divided by `per`, rounded up. The start page is always built, so an empty list still gets its first page. `start` defaults to 1; use `start: 2` when page 1 lives at another route, as above. `param` names the route param and defaults to `:page`. `per` must be a positive integer.
+Page 1 lives at `/blog` here, so the list starts at 2. With 10 posts or fewer it is empty and no `/blog/page/:page` page is built.
 
 ## Skips
 

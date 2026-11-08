@@ -44,9 +44,10 @@ module Kiln
       end
     end
 
-    # Editor markup for Tensaku: data-tensaku-md="path:startLine:startCol-endLine:endCol", with the
-    # path relative to Rails.root. Only block elements carry it; commonmarker's positions on inline
-    # elements are dropped. The format is a draft, and this is the one place that writes it.
+    # Editor markup: data-md-source="path:startLine:startCol-endLine:endCol", with the path relative
+    # to Rails.root, 1-based lines and commonmarker byte columns with an inclusive end. Only the
+    # elements in BLOCKS carry it; commonmarker's positions on inline elements are dropped. This is
+    # the one place that writes it.
     module SourcePosition
       BLOCKS = %w[p h1 h2 h3 h4 h5 h6 ul ol li blockquote pre table hr].to_set.freeze
       ATTRIBUTE = /<(\w+)([^>]*?) data-sourcepos="(\d+):(\d+)-(\d+):(\d+)"/
@@ -57,7 +58,7 @@ module Kiln
           tag, rest = $1, $2
           next "<#{tag}#{rest}" unless BLOCKS.include?(tag)
 
-          %(<#{tag}#{rest} data-tensaku-md="#{relative}:#{$3.to_i + line_offset}:#{$4}-#{$5.to_i + line_offset}:#{$6}")
+          %(<#{tag}#{rest} data-md-source="#{relative}:#{$3.to_i + line_offset}:#{$4}-#{$5.to_i + line_offset}:#{$6}")
         end
       end
     end

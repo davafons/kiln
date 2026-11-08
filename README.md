@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://kiln.davafons.com">Docs</a> ·
-  <a href="https://kiln.davafons.com/installation">Installation</a> ·
+  <a href="https://kiln.davafons.com/installation/">Installation</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 

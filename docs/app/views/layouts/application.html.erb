@@ -13,8 +13,8 @@
     <%= lc_docs_shell navigation: render("shared/navigation"), contents:, menu_label: "Pages", main: { class: "max-w-3xl" } do %>
       <%= lc_prose(anchors: true) { body } %>
       <% if index %>
-        <%= lc_pager previous: (index.positive? ? Docs::PAGES[index - 1].then { [ it.title, "/#{it.slug}" ] } : nil),
-              next: Docs::PAGES[index + 1]&.then { [ it.title, "/#{it.slug}" ] },
+        <%= lc_pager previous: (index.positive? ? Docs::PAGES[index - 1].then { [ it.title, page_path(it.slug) ] } : nil),
+              next: Docs::PAGES[index + 1]&.then { [ it.title, page_path(it.slug) ] },
               class: "mt-section" %>
       <% end %>
     <% end %>

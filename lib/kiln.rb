@@ -35,14 +35,48 @@ module Kiln
       @building == true
     end
 
-    def building!
-      previous = @building
+    def building!(renderer: nil)
+      previous = [ @building, @renderer ]
       @building = true
+      @renderer = renderer
       build_cache.clear
       yield
     ensure
-      @building = previous
+      @building, @renderer = previous
       build_cache.clear
+    end
+
+    # Another page's body as a build writes it (CSRF tokens stripped), for pages built from other
+    # pages, such as a search index. Raises Kiln::Error unless the page responds with 2xx.
+    #
+    #   pages = Docs::PAGES.map { { url: page_path(it), html: Kiln.render(page_path(it)) } }
+    #
+    # During a build the response is shared: the build writes the same response, so every page is
+    # rendered once whichever asks for it first. Outside a build it renders on every call.
+    def render(path)
+      response = response_for(path)
+      raise Error, "Kiln.render(#{path.inspect}) got a #{response.status} response" unless response.success?
+
+      response.html? ? Processors::StripCSRF.call(response.body) : response.body
+    end
+
+    # The app's response for a path, cached for the build so the build and Kiln.render share it.
+    # "/now" and "/now/" are the same page. A page that renders itself, directly or through other
+    # pages, raises Kiln::Error.
+    def response_for(path)
+      path = path.to_s
+      path = path.chomp("/") unless path == "/"
+      build_cache.fetch([ :kiln_response, path ]) do
+        rendering = Thread.current[:kiln_rendering] ||= []
+        raise Error, "Kiln.render loops: #{[ *rendering, path ].join(" -> ")}" if rendering.include?(path)
+
+        rendering.push(path)
+        begin
+          (@renderer || Renderer.new(Rails.application, host: config.host)).get(path)
+        ensure
+          rendering.pop
+        end
+      end
     end
 
     # Memoization store that lives for one build. Cleared before and after every build.
@@ -55,6 +89,7 @@ module Kiln
       @pages = nil
       @building = nil
       @build_cache = nil
+      @renderer = nil
     end
   end
 end

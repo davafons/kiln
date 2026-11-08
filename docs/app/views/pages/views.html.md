@@ -12,7 +12,7 @@ Views for a Kiln site are ordinary Rails views. A build renders them through the
 <% end %>
 ```
 
-It is also true inside `assert_page` from the [test helper](/testing), so a test sees the page a build writes.
+It is also true inside `assert_page` from the [test helper](/testing/), so a test sees the page a build writes.
 
 ## Kiln.build_cache
 
@@ -27,6 +27,23 @@ end
 ```
 
 Outside a build it runs the block every time, so a development server never serves stale data. The content layer caches collections in it during a build.
+
+## Pages built from other pages
+
+`Kiln.render(path)` returns another page's body as a build writes it, with CSRF tokens stripped. Use it for a page made from the others, such as a search index:
+
+```ruby
+# app/controllers/search_controller.rb
+def index
+  pages = Docs::PAGES.map do |page|
+    html = Nokogiri::HTML5(Kiln.render(page_path(page.slug)))
+    { url: page_path(page.slug), title: page.title, text: html.at_css("main").text.squish }
+  end
+  render json: pages
+end
+```
+
+During a build the response is shared with the build itself, so each page is rendered once, whichever asks for it first. `/now` and `/now/` are the same page. Outside a build it renders on every call, so the route works on a development server too. A page that does not respond with 2xx raises `Kiln::Error`, and so does a page that renders itself, directly or through other pages. Kiln has no hook that runs after a build: a file made from other pages is a route like any other, and a step that is not Ruby (image generation with Node, for example) runs after `kiln:build` in your build script.
 
 ## Assets
 
@@ -63,7 +80,7 @@ This site loads Hotwire Spark that way, so `bin/rails server` reloads on every c
 
 ## Editor markup
 
-In-page editors add source-position attributes to the HTML: Herb's source attribution adds `data-herb-*` and [Tensaku](https://tensaku.lostcoords.com) adds `data-tensaku-*`. When either reaches a built page, the build fails with an error that lists the pages. Turn them off outside development, or build in production. The content layer already turns its own Tensaku attributes off while Kiln is building.
+In-page editors add source-position attributes to the HTML: Herb's source attribution adds `data-herb-*`, [Tensaku](https://tensaku.lostcoords.com) adds `data-tensaku-*`, and the content layer adds `data-md-source` when `Kiln::Content.source_positions` is on. When any of them reaches a built page, the build fails with an error that lists the pages. Turn them off outside development, or build in production. The content layer turns its own attribute off while Kiln is building.
 
 ## Forms
 

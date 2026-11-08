@@ -22,7 +22,8 @@ namespace :kiln do
       puts "Pages since last build: #{summary}"
       changes.each { |kind, paths| paths.each { puts "  #{kind}: #{it}" } }
     end
-    puts format("Output: %s (%.1fs)", build.output, elapsed)
+    status = report.success? ? "Output" : "Output left unchanged"
+    puts format("%s: %s (%s, %.1fs)", status, build.output, Rails.env, elapsed)
     exit 1 if report.failure?
   end
 end

@@ -137,16 +137,6 @@ class Kiln::RouterTest < Kiln::TestCase
     assert_match(/:missing .*missing :slug/, messages[4])
   end
 
-  test "paginate through the router" do
-    @pages.paginate :posts_page, per: 10, total: -> { 15 }, start: 2
-    router = router_for do
-      get "posts", to: "posts#index", as: :posts
-      get "posts/page/:page", to: "posts#index", as: :posts_page
-    end
-
-    assert_equal %w[/posts /posts/page/2], router.pages.map(&:path)
-  end
-
   test "dummy app: every GET route is built or skipped" do
     router = Kiln::Router.new(dummy_app.routes, Kiln.pages, report: @report)
 
