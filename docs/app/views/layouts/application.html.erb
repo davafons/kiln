@@ -3,12 +3,20 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <%= render "shared/head", title: [ @page&.title || "Page not found", "Kiln" ].join(" · "), description: @page&.description || "Kiln renders every GET route of a Rails app into a static site." %>
+    <meta charset="utf-8">
+    <title><%= [ @page&.title || "Page not found", "Kiln" ].join(" · ") %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="<%= @page&.description || "Kiln builds a Rails app into a static site." %>">
     <% unless @page %><meta name="robots" content="noindex"><% end %>
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <%= stylesheet_link_tag "tailwind", data: { turbo_track: "reload" } %>
+    <meta name="turbo-prefetch" content="true">
+    <%= javascript_importmap_tags %>
   </head>
   <body class="antialiased">
     <%= lc_skip_link %>
-    <%= render "shared/header", current: :docs %>
+    <%= render "shared/header" %>
     <% contents = lc_toc(headings: body) if body.match?(/<h[23] id=/) %>
     <%= lc_docs_shell navigation: render("shared/navigation"), contents:, menu_label: "Pages", main: { class: "max-w-3xl" } do %>
       <%= lc_prose(anchors: true) { body } %>
@@ -17,7 +25,13 @@
               next: Docs::PAGES[index + 1]&.then { [ it.title, page_path(it.slug) ] },
               class: "mt-section" %>
       <% end %>
+      <footer class="mt-section flex flex-wrap justify-between gap-4 border-t border-border pt-6 text-xs text-muted-foreground">
+        <span>Kiln <%= Kiln::VERSION %> · MIT license</span>
+        <span class="flex gap-4">
+          <%= lc_link "RubyGems", "https://rubygems.org/gems/kiln", tone: :muted %>
+          <%= lc_link "Changelog", "https://github.com/davafons/kiln/blob/main/CHANGELOG.md", tone: :muted %>
+        </span>
+      </footer>
     <% end %>
-    <%= render "shared/footer" %>
   </body>
 </html>

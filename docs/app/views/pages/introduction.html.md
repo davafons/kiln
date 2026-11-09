@@ -1,41 +1,96 @@
+<img src="/icon.png" alt="Kiln mascot, a small brick kiln" width="96" height="96">
+
 # Introduction
 
-Kiln is a Ruby gem that renders every GET route of a Rails app through Rack and writes plain files that any static host can serve. You build pages with normal Rails: routes, controllers, views, helpers, Turbo and Stimulus. Development stays `bin/rails server`, and a build is one command:
+Kiln builds a Rails app into a static site. It sends a GET request through Rack for every route and writes each response to a file. Any static host can serve the result.
+
+You write the site as an ordinary Rails app, with controllers, views, layouts, helpers, the asset pipeline, Turbo and Stimulus. You work on it with `bin/rails server`. Kiln adds one config file and two rake tasks, and the deployed site has no Rails server behind it.
+
+## An example
+
+A small blog has these routes:
+
+```ruby
+# config/routes.rb
+Rails.application.routes.draw do
+  root "pages#home"
+  get "about", to: "pages#about"
+  get "blog/:slug", to: "posts#show", as: :post
+  get "feed", to: "posts#feed", defaults: { format: :rss }
+  get "404", to: "pages#not_found"
+end
+```
+
+Kiln builds a route without params as it is. `blog/:slug` has a param, so `config/kiln.rb` lists the values to build:
+
+```ruby
+# config/kiln.rb
+Kiln.configure do |config|
+  config.url = "https://example.com"
+  config.not_found = "/404"
+end
+
+Kiln.pages do
+  params :post, -> { Post.published.map { { slug: it.slug } } }
+end
+```
+
+`Post` is the app's own code. Kiln has no data layer: the lambda runs at build time and can read a database, files or an API.
+
+A build writes the site to `dist/`:
 
 ```sh
 RAILS_ENV=production bin/rails kiln:build
 ```
 
-The site lands in `dist/`. This documentation is a Rails app built that way.
+```text
+dist/
+├── index.html
+├── about/index.html
+├── blog/hello/index.html
+├── blog/second-post/index.html
+├── feed.rss
+├── 404.html
+├── sitemap.xml
+└── assets/application-7cff19ac.css
+```
 
-## Why a Rails app
+## When a build fails
 
-A static site generator brings its own templates, its own data layer and its own dev server. Kiln keeps the app you would write anyway. Layouts, partials, helpers, view components, i18n and the asset pipeline work as they do on a server, because a build sends each request through the same Rack stack a browser request would go through.
+A build does not stop at the first problem. It reports all of them, exits with status 1 and leaves the previous `dist/` in place:
 
-The same app can also run as a normal Rails server. Kiln adds a rake task and a config file, and nothing in the app has to know about it.
+```text
+Kiln build failed with 3 errors:
 
-## Routes are the page list
+  Uncovered route (1)
+    GET /tags/:tag(.:format) (:tag) needs params. Add `params :tag, -> { [ { tag: ... } ] }` or `skip :tag, reason: "..."` to config/kiln.rb.
 
-Kiln reads the routes, not a list of files. A GET route without required params becomes a page on its own. A route with params, such as `get "blog/:slug"`, needs a param source in `config/kiln.rb` that lists the values to build. A route that needs params and has neither a source nor a skip fails the build, and the error names the line to add. [Declaring pages](/pages/) covers the details.
+  Render (1)
+    /boom: RuntimeError: no such post (app/controllers/pages_controller.rb:5:in 'PagesController#boom')
 
-## The build fails loudly
+  Broken link (1)
+    /: /contact/
+Output left unchanged: /path/to/app/dist (production, 0.1s)
+```
 
-A build collects every problem and reports them together: render errors, pages that respond with an error status, assets that don't resolve, broken internal links and anchors, importmap modules that are missing, and routes without a param source. Then the task exits non-zero. Nothing is published half-built by accident.
+The [build reference](/build/#errors) lists every kind of error.
 
-## Kiln knows nothing about your data
+## What does not work
 
-Kiln has no models, data sources or collections in its core. Your models, repositories and Markdown files stay ordinary app code, and param sources are plain lambdas that call them. The optional [content layer](/content/) renders Markdown views and reads Markdown collections, and it works the same in an app that is never built statically.
-
-## What a build does
-
-1. Precompiles assets in-process into a temporary directory.
-2. Walks the GET routes, expands each one with its param source, and renders every page through `Rack::MockRequest`.
-3. Strips CSRF tokens and meta tags. The rest of the HTML stays byte for byte as the app rendered it.
-4. Exports the assets the pages reference, copies `public/`, and writes `_redirects`, `sitemap.xml`, `404.html` and `CNAME` when they apply.
-5. Checks every internal link, anchor and importmap module in the output.
-
-[Configuration](/configuration/) lists what each step writes and the options that change it.
+The output is plain files, so nothing runs per request. Forms, sessions and server-side search need an external service, or their routes need to be skipped. [Known limits](/limits/) has the full list.
 
 ## Requirements
 
-Kiln needs Ruby 4.0 or later and Rails 8.1 or later. The content layer also needs the commonmarker and rouge gems.
+Ruby 4.0 or later and Rails 8.1 or later. The optional [Markdown layer](/content/) also needs the commonmarker and rouge gems.
+
+Kiln is at an early version and breaking changes are possible in any release. The [changelog](https://github.com/davafons/kiln/blob/main/CHANGELOG.md) lists them.
+
+## Where to go next
+
+- [Install Kiln](/installation/) and run a first build.
+- Declare [pages](/pages/) for routes with params, redirects and feeds.
+- Read what is different about [views and assets](/views/) during a build.
+- Render [Markdown](/content/) views and collections.
+- [Test](/testing/) the site and [deploy](/deploying/) it.
+
+This site is a Rails app built with Kiln. Its source is in the [docs folder](https://github.com/davafons/kiln/tree/main/docs) of the repository.

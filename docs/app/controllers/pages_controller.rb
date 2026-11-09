@@ -1,11 +1,7 @@
 class PagesController < ApplicationController
-  def landing
-    render layout: "landing"
-  end
-
   def show
     @page = Docs.page(params[:slug]) or raise ActionController::RoutingError, "No page #{params[:slug]}"
-    render @page.slug
+    render @page.template
   end
 
   def llms

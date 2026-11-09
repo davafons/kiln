@@ -1,19 +1,21 @@
 # Installation
 
-This page adds Kiln to an existing Rails 8.1 app and runs a first build. The current release is <%= Kiln::VERSION %>.
+This page adds Kiln to an existing Rails app and runs a first build. The current release is <%= Kiln::VERSION %>.
 
-## Add the gem
+## 1. Add the gem
 
 ```ruby
 # Gemfile
 gem "kiln"
 ```
 
-Run `bundle install`. Kiln adds its rake tasks through a Railtie, so there is no generator to run.
+Run `bundle install`. There is no generator: the gem adds its rake tasks when the app loads.
 
-## Write config/kiln.rb
+## 2. Keep app/assets/builds
 
-Kiln loads `config/kiln.rb` before the app's initializers. It holds two blocks: `Kiln.configure` for options and `Kiln.pages` for the routes that need params.
+Propshaft only serves asset folders that exist when the app boots. Track `app/assets/builds/.keep` in version control, as a new Rails app does. Without it, a build on a fresh checkout stops with an error that says so.
+
+## 3. Write config/kiln.rb
 
 ```ruby
 # config/kiln.rb
@@ -28,37 +30,35 @@ Kiln.pages do
 end
 ```
 
-`url` is the public base URL. Its host is sent with every request, and `sitemap.xml` is written only when it is set. `not_found` is the path rendered to `404.html`. An app whose routes all have no params can leave `Kiln.pages` out. Param sources are lambdas, so they can name models that do not exist yet when the file loads.
+`url` is the site's public address, and `sitemap.xml` is written only when it is set. `not_found` is the route that becomes `404.html`. [Configuration](/configuration/) lists every option.
 
-## Run a build
+`Kiln.pages` says what to do with routes that have params. Leave it out if no route has any. If you are not sure which routes need it, run a build: the errors give the lines to add. Param sources are lambdas, so they can name models that are not loaded yet when this file loads.
+
+## 4. Build
 
 ```sh
 RAILS_ENV=production bin/rails kiln:build
 ```
 
-The build runs in the environment Rails boots in. `kiln:build` does not set it, because Rails picks the gem groups to load before the task starts, so pass `RAILS_ENV=production` for a site you deploy. The last line of the output names the environment. The output goes to `dist/`. A build writes into a temporary directory next to it and replaces `dist/` only when it succeeds, so a failed build leaves the previous output as it was. Add it to `.gitignore` unless you commit the output on purpose. A successful build prints the number of files written, the output path and, from the second build on, the pages added, removed and changed since the previous one:
+Set `RAILS_ENV` yourself for a site you deploy. Rails picks the gem groups before the task starts, so the task cannot set it.
+
+The site goes to `dist/`. Add `dist/` to `.gitignore`, unless you [commit the output](/deploying/#committed-output) on purpose. From the second build on, the output lists what changed:
 
 ```text
-Kiln build succeeded: 42 files written.
-Pages since last build: 1 added, 0 removed, 2 changed
-  added: /blog/hello
-  changed: /
-  changed: /blog
-Output: /path/to/app/dist (production, 3.1s)
+Kiln build succeeded: 9 files written.
+Pages since last build: 0 added, 0 removed, 1 changed
+  changed: /about
+Output: /path/to/app/dist (production, 0.1s)
 ```
 
-A failed build prints every error, grouped by kind, and exits with status 1. Set `VERBOSE=1` to see the request log while it renders.
+If a build fails, the [error reference](/build/#errors) explains each message. Set `VERBOSE=1` to see the request log.
 
-The comparison with the previous build reads `tmp/kiln-manifest.json`, which the build writes outside the output, so it is never published.
-
-## Look at the output
+## 5. Look at the output
 
 ```sh
 bin/rails kiln:serve
 ```
 
-`kiln:serve` serves the output the way Cloudflare Pages and GitHub Pages resolve paths: the exact file, then `x.html`, then `x/index.html`. It applies the exact rules in `_redirects` and answers unknown paths with `404.html`. It reads `PORT` (default 4000) and `BIND` (default `localhost`). Kiln adds no dev server for writing pages: keep using `bin/rails server`.
+This serves `dist/` at `http://localhost:4000`, close to how a static host does. Set `PORT` and `BIND` to change the address. It is for checking a build. To work on pages, use `bin/rails server`.
 
-## Fresh checkouts
-
-Propshaft only serves asset folders that exist when the app boots. Track `app/assets/builds/.keep`, as a new Rails app does. Without it, a build on a fresh checkout stops with one error that says so.
+Next, [deploy the output](/deploying/), or read about [pages](/pages/) to declare the rest of your routes.

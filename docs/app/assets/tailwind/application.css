@@ -12,49 +12,22 @@
 
 @import "../builds/tailwind/lostcoords_ui.css";
 
-/* Fired clay on a warm paper ground. The primary is the terracotta of the gem badge. */
+/* The header's height. The docs shell's sidebars stick below it, and anchors scroll clear of it. */
 :root {
-  --kiln-clay: #b45d3c;
-  --kiln-clay-text: #9a4a2c;
-  --kiln-ground: #fbf8f4;
-  --kiln-ink: #2a2522;
-
-  --background: var(--kiln-ground);
-  --foreground: var(--kiln-ink);
-  --card: color-mix(in oklab, var(--kiln-ground), var(--kiln-ink) 4%);
-  --card-foreground: var(--kiln-ink);
-  --popover: var(--kiln-ground);
-  --popover-foreground: var(--kiln-ink);
-  --primary: var(--kiln-clay-text);
-  --primary-foreground: #fff;
-  --secondary: color-mix(in oklab, var(--kiln-ground), var(--kiln-ink) 8%);
-  --secondary-foreground: var(--kiln-ink);
-  --muted: color-mix(in oklab, var(--kiln-ground), var(--kiln-ink) 5%);
-  --muted-foreground: color-mix(in oklab, var(--kiln-ink) 70%, var(--kiln-ground));
-  --accent: color-mix(in oklab, var(--kiln-ground), var(--kiln-ink) 9%);
-  --accent-foreground: var(--kiln-ink);
-  --border: color-mix(in oklab, var(--kiln-ground), var(--kiln-ink) 14%);
-  --input: color-mix(in oklab, var(--kiln-ground), var(--kiln-ink) 7%);
-  --ring: var(--kiln-clay);
-}
-
-.brand-mark {
-  display: inline-block;
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 0.25rem 0.25rem 0.45rem 0.45rem;
-  background: var(--kiln-clay);
+  --lc-sticky-offset: 3.5rem;
 }
 
 /* Rouge classes in Markdown code blocks, from Kiln's content layer. */
-.highlight { color: var(--kiln-ink); }
-.highlight :is(.c, .c1, .cm, .cs, .cp) { color: color-mix(in oklab, var(--kiln-ink) 55%, var(--kiln-ground)); font-style: italic; }
-.highlight :is(.k, .kd, .kn, .kp, .kr, .kt, .kv, .ow) { color: #a8341f; }
-.highlight :is(.s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr) { color: #3f6b2a; }
-.highlight :is(.ss) { color: #7a4f9a; }
-.highlight :is(.m, .mi, .mf, .mh, .mo, .il) { color: #9a5b00; }
-.highlight :is(.nc, .no, .nn) { color: #1f5f8b; }
-.highlight :is(.nf, .fm) { color: #6b3fa0; }
-.highlight :is(.nb, .bp, .nt) { color: #8b4513; }
-.highlight :is(.na, .nv, .vi, .vc, .vg) { color: #1f5f8b; }
-.highlight .err { color: inherit; }
+.highlight :is(.c, .c1, .cm, .cs, .cp) { color: var(--muted-foreground); }
+.highlight :is(.k, .kd, .kn, .kp, .kr, .kt, .kv, .ow) { color: #a0281e; }
+.highlight :is(.s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr) { color: #2c6a32; }
+.highlight :is(.ss, .na, .nv, .vi, .vc, .vg, .nc, .no, .nn, .nf, .fm, .m, .mi, .mf, .mh, .mo, .il) { color: #1f5a8b; }
+
+/* The mascot above the introduction's title. */
+.lc-prose > img:first-child {
+  margin: 0 0 1rem;
+}
+
+.lc-prose > img:first-child + h1 {
+  margin-top: 0;
+}

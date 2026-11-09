@@ -1,6 +1,6 @@
 # Testing
 
-`Kiln::TestHelper` adds two Minitest helpers: one builds the whole site, the other renders a single page the way a build does. It is not loaded with Kiln, so require it from the test:
+`Kiln::TestHelper` adds two Minitest helpers: `kiln_build` builds the whole site, and `assert_page` renders one page the way a build does. It is not loaded with Kiln, so require it:
 
 ```ruby
 # test/static_site_test.rb
@@ -14,7 +14,7 @@ class StaticSiteTest < ActiveSupport::TestCase
     kiln_build(repeatable: true) { |output| assert output.join("index.html").file? }
   end
 
-  test "home page" do
+  test "the home page has a heading" do
     assert_page "/", selector: "h1", text: "Welcome"
   end
 end
@@ -22,21 +22,21 @@ end
 
 ## kiln_build
 
-`kiln_build { |output| ... }` builds the site into a temporary directory and fails the test with the build report when there is any error. It yields the output path as a `Pathname`, and removes the directory when the block returns.
+`kiln_build { |output| ... }` builds the site into a temporary directory and fails the test with the build report on any error. It yields the output as a `Pathname`, and removes the directory when the block returns.
 
-With `repeatable: true` it builds twice, fails with the list of differing files when the two outputs differ, and yields the first output. That catches pages whose output depends on the time, random values or ordering, which would make every deploy look like a change.
+With `repeatable: true` it builds twice and fails with the list of differing files. This catches pages that depend on the time, random values or ordering, which would make every deploy look like a change.
 
-Without a block, it returns the `Kiln::Build` and leaves the temporary directory for the caller to remove. `app:` and `config:` default to `Rails.application` and `Kiln.config`.
+Without a block it returns the `Kiln::Build` and leaves the directory for the caller to remove.
 
-A test build does not write `tmp/kiln-manifest.json`, so it never changes what the next `kiln:build` reports as changed.
+A test build does not write `tmp/kiln-manifest.json`, so it does not change what the next `kiln:build` reports as changed.
 
 ## assert_page
 
-`assert_page(path)` renders one path through the app and asserts it responds with 200. CSRF tokens are stripped and `Kiln.building?` is true while it renders, as in a build. It returns the body.
+`assert_page(path)` renders one path and asserts its status. `Kiln.building?` is true while it renders, and CSRF tokens are stripped. It returns the body.
 
 | Option | What it does |
 |---|---|
-| `status:` | The expected status. Defaults to 200. |
+| `status:` | The expected status. The default is 200. |
 | `selector:` | A CSS selector that must match. |
 | `text:` | Text that one of the matched elements must contain. Needs `selector:`. |
 
@@ -45,16 +45,4 @@ assert_page "/404", status: 404
 body = assert_page "/blog", selector: "article h2", text: "Hello"
 ```
 
-## This site's test
-
-The docs app's main test builds the whole site twice and checks every page in the page list. Two more use `assert_page` for the navigation and the installation page:
-
-```ruby
-test "every page is built" do
-  kiln_build(repeatable: true) do |output|
-    Docs::PAGES.each { assert output.join(it.slug, "index.html").file? }
-  end
-end
-```
-
-The repository's CI runs it, and also builds the site with `RAILS_ENV=production bin/rails kiln:build`, so a change to Kiln that breaks this site fails CI.
+Both helpers default to `Rails.application` and `Kiln.config`. Pass `app:` and `config:` to use others.

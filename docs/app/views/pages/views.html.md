@@ -1,6 +1,6 @@
-# Writing views
+# Views and assets
 
-Views for a Kiln site are ordinary Rails views. A build renders them through the app's full Rack stack, so helpers, layouts, partials and i18n behave as they do on a server. This page covers what is different about a build.
+Views are ordinary Rails views. A build renders them through the app's full Rack stack, so helpers, layouts, partials and i18n behave as they do on a server. This page covers what is different during a build.
 
 ## Kiln.building?
 
@@ -16,7 +16,7 @@ It is also true inside `assert_page` from the [test helper](/testing/), so a tes
 
 ## Kiln.build_cache
 
-`Kiln.build_cache.fetch(key) { ... }` memoizes a value for one build. The cache is cleared before and after every build, and it returns the cached object itself, not a copy:
+`Kiln.build_cache.fetch(key) { ... }` keeps a value for one build, for data that many pages read:
 
 ```ruby
 class Post
@@ -26,11 +26,11 @@ class Post
 end
 ```
 
-Outside a build it runs the block every time, so a development server never serves stale data. The content layer caches collections in it during a build.
+The cache is cleared before and after every build, and it returns the cached object itself, not a copy. Outside a build it runs the block every time, so a development server never serves stale data.
 
-## Pages built from other pages
+## Kiln.render
 
-`Kiln.render(path)` returns another page's body as a build writes it, with CSRF tokens stripped. Use it for a page made from the others, such as a search index:
+`Kiln.render(path)` returns another page's body as a build writes it, with CSRF tokens stripped. Use it for a page made from other pages, such as a search index:
 
 ```ruby
 # app/controllers/search_controller.rb
@@ -43,23 +43,38 @@ def index
 end
 ```
 
-During a build the response is shared with the build itself, so each page is rendered once, whichever asks for it first. `/now` and `/now/` are the same page. Outside a build it renders on every call, so the route works on a development server too. A page that does not respond with 2xx raises `Kiln::Error`, and so does a page that renders itself, directly or through other pages. Kiln has no hook that runs after a build: a file made from other pages is a route like any other, and a step that is not Ruby (image generation with Node, for example) runs after `kiln:build` in your build script.
+- During a build each page is rendered once, whichever asks for it first. Outside a build it renders on every call, so the route also works on a development server.
+- `/now` and `/now/` are the same page.
+- A page that does not respond with 2xx raises `Kiln::Error`. So does a page that renders itself, directly or through other pages.
+
+Kiln has no hook that runs after a build. A file made from other pages is a route like any other. A step that is not Ruby, such as image generation with Node, runs after `kiln:build` in your build script.
 
 ## Assets
 
-A production build precompiles assets in-process into a temporary directory and exports them from there. `public/assets` is left alone, so a development server of the same app can run at the same time. Only the assets the output references are exported.
+Use the asset helpers: `stylesheet_link_tag`, `image_tag` and `javascript_importmap_tags`. They write root-absolute paths, and Kiln finds the files from those references. Only the assets the output references are exported.
 
-A build in development, where assets are served dynamically, skips the precompile but still runs the steps hooked into `assets:precompile`, such as `tailwindcss:build`, `javascript:build` and `css:build`. That way a development build never ships a stale bundle.
+The build does one of three things, depending on the environment:
 
-Propshaft only serves asset folders that exist when the app boots. Track `app/assets/builds/.keep`, as a new Rails app does, or a build on a fresh checkout stops with an error that says so.
+| Situation | What the build does |
+|---|---|
+| Production, no `public/assets/.manifest.json` | Precompiles into a temporary directory and leaves `public/assets` alone, so a development server of the same app can run at the same time. |
+| Production, with `public/assets/.manifest.json` | Exports the assets already compiled there, without compiling. Delete that directory if it is stale. |
+| Development and test, where assets are served dynamically | Runs the tasks hooked into `assets:precompile`, such as `tailwindcss:build`, `javascript:build` and `css:build`, and exports from the running app. |
 
-Use the asset helpers (`stylesheet_link_tag`, `image_tag`, `javascript_importmap_tags`). They write root-absolute paths, which keep every page's `<head>` identical, so Turbo visits never force a full reload.
+JavaScript modules are found through the importmap, and the build fails when a pinned module is missing from the output. Relative `import "./x.js"` between files is not followed.
 
-JavaScript modules are found through the importmap, and the link checker fails the build when a pinned module is missing from the output. Relative `import "./x.js"` between files is not followed.
+`sourceMappingURL` comments are removed from exported JavaScript and CSS.
 
 ## Development middleware
 
-Development middleware that injects markup into every response fails the build before it renders anything: Hotwire Spark, web-console, rack-mini-profiler and rack-livereload. Load it only under `bin/rails server`:
+Development middleware that injects markup into every response stops the build before it renders anything. That applies to Hotwire Spark, web-console, rack-mini-profiler and rack-livereload. Building with `RAILS_ENV=production` avoids the problem. To build in development too, load the gem only under `bin/rails server`:
+
+```ruby
+# Gemfile
+group :development do
+  gem "hotwire-spark", require: false
+end
+```
 
 ```ruby
 # config/application.rb, after Bundler.require
@@ -69,19 +84,10 @@ if Rails.env.development? && defined?(Rails::Server)
 end
 ```
 
-```ruby
-# Gemfile
-group :development do
-  gem "hotwire-spark", require: false
-end
-```
-
-This site loads Hotwire Spark that way, so `bin/rails server` reloads on every change and a build never sees it. Building with `RAILS_ENV=production` also avoids the problem.
-
 ## Editor markup
 
-In-page editors add source-position attributes to the HTML: Herb's source attribution adds `data-herb-*`, [Tensaku](https://tensaku.lostcoords.com) adds `data-tensaku-*`, and the content layer adds `data-md-source` when `Kiln::Content.source_positions` is on. When any of them reaches a built page, the build fails with an error that lists the pages. Turn them off outside development, or build in production. The content layer turns its own attribute off while Kiln is building.
+In-page editors add source-position attributes to the HTML: Herb's source attribution adds `data-herb-*`, [Tensaku](https://tensaku.lostcoords.com) adds `data-tensaku-*`, and the Markdown layer adds [`data-md-source`](/content/#source-positions) when it is on. The build fails when any of them reaches a page, and the error lists the pages. Turn them off outside development, or build in production.
 
 ## Forms
 
-CSRF tokens are stripped from every page, so a form renders as it would with forgery protection off. A static host has no server to post to: point forms at an external service, or skip their routes.
+CSRF tokens and the `csrf-param` and `csrf-token` meta tags are stripped from every page, and the rest of the HTML stays byte for byte as the app rendered it. A form renders, but a static host has no server to post to. Point it at an external service, or skip its route.

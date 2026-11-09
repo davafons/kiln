@@ -1,9 +1,9 @@
 # Kiln
 
-> Kiln renders every GET route of a Rails app through Rack and writes plain files that any static host can serve.
+> Kiln builds a Rails app into a static site. It sends a GET request through Rack for every route and writes each response to a file.
 
 ## Docs
 
 <% Docs::PAGES.each do |page| -%>
-- [<%= page.title %>](<%= Kiln.config.url %>/<%= page.slug %>): <%= page.description %>
+- [<%= page.title %>](<%= Kiln.config.url %><%= page_path(page.slug) %>): <%= page.description %>
 <% end -%>

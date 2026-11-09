@@ -1,21 +1,21 @@
 # Deploying
 
-The output is a directory of plain files. Any static host can serve it. This page covers the files hosts care about and two common setups.
+The output is a directory of plain files, so any static host can serve it. Kiln has been used on Cloudflare Pages and GitHub Pages. Other hosts should work, and the notes on Netlify below come from its documented `_redirects` format, not from a test.
 
-## What a host reads
+## What each host reads
 
 | File | Written when | Read by |
 |---|---|---|
-| `404.html` | `not_found` is set | Cloudflare Pages, GitHub Pages and Netlify serve it for unknown paths. |
+| `404.html` | `not_found` is set | Cloudflare Pages, GitHub Pages and Netlify, for unknown paths. |
 | `_redirects` | A route redirects, or `public/_redirects` exists | Cloudflare Pages and Netlify. GitHub Pages ignores it. |
 | `CNAME` | `cname` is set | GitHub Pages, for a custom domain. |
 | `sitemap.xml` | `url` is set | Search engines. |
 
-With the default `paths: :directory`, `/about` is written to `about/index.html`. Cloudflare Pages and GitHub Pages both serve that file at `/about/` and redirect `/about` there, and `bin/rails kiln:serve` resolves paths the same way. Route helpers write `/about/` in this mode, so links skip the redirect (see [Declaring pages](/pages/#routes-without-params)). With `paths: :file`, `/about` is written to `about.html` and served at `/about`.
+With the default `paths: :directory`, `/about` is written to `about/index.html`. Cloudflare Pages and GitHub Pages serve that file at `/about/` and redirect `/about` to it. With `paths: :file`, it is written to `about.html` and served at `/about`.
 
 ## Cloudflare Pages
 
-Cloudflare Pages reads `_redirects`, so redirect routes work there. Build in CI and upload the output with Wrangler:
+Build in CI and upload the output with Wrangler:
 
 ```sh
 RAILS_ENV=production bin/rails kiln:build
@@ -24,30 +24,31 @@ npx wrangler pages deploy dist --project-name=my-site
 
 ## GitHub Pages
 
-GitHub Pages serves `404.html` and reads `CNAME`, but ignores `_redirects`. A redirect route still builds, and the rule is written, but the old path answers with the 404 page. Keep redirect routes out of a site deployed there, or use a host that reads the file.
+GitHub Pages reads `404.html` and `CNAME`, but ignores `_redirects`. A redirect route still builds, and its old path answers with the 404 page. Keep redirect routes out of a site deployed there, or use another host.
 
-This site deploys to GitHub Pages from a workflow. It builds on every push to `main` that changes the docs or Kiln itself:
+This workflow builds and deploys the site. The repository's Pages setting must use GitHub Actions as its source:
 
 ```yaml
 # .github/workflows/docs.yml
+on:
+  push:
+    branches: [main]
+
 jobs:
   build:
     runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: docs
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with:
+          ruby-version: "4.0"
           bundler-cache: true
-          working-directory: docs
       - run: bin/rails kiln:build
         env:
           RAILS_ENV: production
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: docs/dist
+          path: dist
 
   deploy:
     needs: build
@@ -61,15 +62,21 @@ jobs:
       - uses: actions/deploy-pages@v5
 ```
 
-The repository's Pages setting must use GitHub Actions as its source.
+This site deploys with a [workflow like it](https://github.com/davafons/kiln/blob/main/.github/workflows/docs.yml).
 
 ## Committed output
 
-Some repositories commit the built site, for example to serve it from a `docs/` folder. CI can check that the committed output is current: build, then fail when Git sees a difference.
+To serve the site from a directory in the repository, set `output` to it:
+
+```ruby
+config.output = "docs"
+```
+
+A successful build replaces that directory entirely, so keep nothing else in it. CI can check that the committed output is current, by building and failing when Git sees a difference:
 
 ```sh
 RAILS_ENV=production bin/rails kiln:build
 test -z "$(git status --porcelain docs)"
 ```
 
-Set `output` to the committed directory, such as `config.output = "docs"`. A successful build replaces that directory entirely, so keep nothing else in it. A failed build leaves it untouched. A build that renders the same bytes as last time leaves Git with nothing to report, which is what `kiln_build(repeatable: true)` checks in tests.
+This needs a build that renders the same bytes every time, which [`kiln_build(repeatable: true)`](/testing/#kiln_build) checks in tests.

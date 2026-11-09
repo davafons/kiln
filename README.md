@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/logo.png" alt="Kiln mascot, a small brick kiln" width="150">
+</p>
+
 <h1 align="center">Kiln</h1>
 
 <p align="center">
@@ -8,27 +12,27 @@
 </p>
 
 <p align="center">
-  Fire a Rails app into a static site.
+  Build a Rails app into a static site.
 </p>
 
 <p align="center">
-  <a href="https://kiln.davafons.com">Docs</a> ·
+  <a href="https://kiln.davafons.com">Documentation</a> ·
   <a href="https://kiln.davafons.com/installation/">Installation</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
-Kiln renders every GET route of a Rails app through Rack and writes plain files that any static host can serve. You build pages with normal Rails: routes, controllers, views, helpers, Turbo and Stimulus. Development stays `bin/rails server`.
+Kiln sends a GET request through Rack for every route of a Rails app and writes each response to a file. Any static host can serve the result. You write the site with routes, controllers, views, the asset pipeline, Turbo and Stimulus, and work on it with `bin/rails server`.
 
-Routes are the page list. A route that needs params and has no param source fails the build, and every render error, missing asset and broken link is reported at once. Kiln knows nothing about your data: models and repositories stay ordinary app code.
+Kiln needs Ruby 4.0 or later and Rails 8.1 or later. It is at an early version, and the [changelog](CHANGELOG.md) lists breaking changes.
 
-Requires Ruby 4.0+ and Rails 8.1+.
-
-## Quick start
+## Build a site
 
 ```ruby
 # Gemfile
 gem "kiln"
 ```
+
+Routes without params need no declaration. Routes with params need a param source or a skip:
 
 ```ruby
 # config/kiln.rb
@@ -45,10 +49,32 @@ end
 
 ```sh
 RAILS_ENV=production bin/rails kiln:build  # write the site to dist/
-bin/rails kiln:serve                       # look at it as a static host serves it
+bin/rails kiln:serve                       # serve dist/ at http://localhost:4000
 ```
 
-The [documentation](https://kiln.davafons.com) covers declaring pages, configuration, writing views for a build, the Markdown content layer, testing, deploying and the known limits.
+A build reports every render error, missing asset, broken link and route without params at once, exits with status 1 and leaves the previous output in place. See [Build](https://kiln.davafons.com/build/#errors) for each message.
+
+## Test it
+
+```ruby
+require "kiln/test_helper"
+
+class StaticSiteTest < ActiveSupport::TestCase
+  include Kiln::TestHelper
+
+  test("the site builds repeatably") { kiln_build(repeatable: true) { assert it.join("index.html").file? } }
+  test("the home page") { assert_page "/", selector: "h1", text: "Welcome" }
+end
+```
+
+## Documentation
+
+Start with the [introduction](https://kiln.davafons.com).
+
+- [Install Kiln](https://kiln.davafons.com/installation/) and declare [pages](https://kiln.davafons.com/pages/).
+- Read about [views and assets](https://kiln.davafons.com/views/) during a build, and the [Markdown](https://kiln.davafons.com/content/) layer.
+- [Test](https://kiln.davafons.com/testing/) and [deploy](https://kiln.davafons.com/deploying/) the site.
+- Look up [configuration](https://kiln.davafons.com/configuration/), the [build](https://kiln.davafons.com/build/) and the [known limits](https://kiln.davafons.com/limits/).
 
 ## Develop Kiln
 
@@ -58,7 +84,7 @@ bin/test
 bin/lint          # RuboCop and bin/house-rules
 ```
 
-`test/dummy` is the Rails app the tests build. `docs/` is the documentation site, a Rails app that uses this repository's Kiln. Run `bin/rails server` there to work on it, and `RAILS_ENV=production bin/rails kiln:build` and `bin/rails test` to check it; CI runs both. `bin/house-rules` rejects em dashes, AI attribution, leftover tool-call markup, filler phrases and dead links in Markdown. [AGENTS.md](AGENTS.md) holds the rules a script cannot check.
+`test/dummy` is the Rails app the tests build. `docs/` is the documentation site, a Rails app that uses this repository's Kiln. Run `bin/rails server` there to work on it, and `RAILS_ENV=production bin/rails kiln:build` and `bin/rails test` to check it; CI runs both. [AGENTS.md](AGENTS.md) holds the rules a script cannot check.
 
 Releases publish from a `vX.Y.Z` tag that matches `Kiln::VERSION`. CI runs first, then the release workflow publishes to RubyGems through trusted publishing.
 
