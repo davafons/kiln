@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.5 (2026-11-13)
+
+Breaking:
+
+- `Kiln::Assets.precompile`, `precompile?` and `check_builds!` move to `Kiln::Assets::Compiler`
+  (`precompile` is now `Compiler.run`, which also checks `app/assets/builds`).
+  `Kiln::Assets.copy_public` is now `Kiln::Writer#copy_public`.
+- `Kiln::Writer.new` takes `report:`, and every file it writes is recorded there.
+  `Kiln::Assets.new` takes `writer:` and `host:` instead of `output:` and `config:`.
+  `Kiln::Sitemap#write` and `Kiln::Redirects#write` take a writer instead of a directory.
+- `Kiln::Report::KINDS` and `Kiln::Build#pages_dsl` and `#previous_manifest` are removed.
+
+Added:
+
+- `kiln_site` in `Kiln::TestHelper` returns the output of one build shared by every test in the
+  class. The directory is removed when the test run ends.
+
+Fixed:
+
+- An asset path that resolves outside the output directory is reported as an asset error instead
+  of being written there.
+- The build summary counts `sitemap.xml`, and counts a copied `public/_redirects` that the build
+  extends once.
+- `kiln:serve` boots an app without its own secret the way `kiln:build` does, instead of failing
+  with "Missing `secret_key_base`" in production.
+- A page path that unescapes to invalid UTF-8 is reported as an invalid path.
+
 ## 0.1.4 (2026-11-13)
 
 Breaking:
