@@ -64,6 +64,7 @@ class StaticSiteTest < ActiveSupport::TestCase
 
   test("the site builds repeatably") { kiln_build(repeatable: true) { assert it.join("index.html").file? } }
   test("the home page") { assert_page "/", selector: "h1", text: "Welcome" }
+  test("the sitemap") { assert kiln_site.join("sitemap.xml").file? }
 end
 ```
 
