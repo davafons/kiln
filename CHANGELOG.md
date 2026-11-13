@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+Fixed:
+
+- Markdown renders a line break inside a paragraph as a space, as CommonMark does, instead of
+  `<br>`. Commonmarker turns hardbreaks on by default, so files wrapped at a column rendered a
+  break at every wrap. Two trailing spaces or a backslash still break the line.
+
 ## 0.1.5 (2026-11-13)
 
 Breaking:

@@ -15,6 +15,11 @@ class Kiln::Content::MarkdownTest < Kiln::TestCase
     assert_includes html, %(<a href="https://example.com">https://example.com</a>)
   end
 
+  test "a line break inside a paragraph is a soft break, and two trailing spaces still break the line" do
+    assert_equal "<p>one\ntwo</p>\n", Kiln::Content::Markdown.render("one\ntwo\n")
+    assert_equal "<p>one<br />\ntwo</p>\n", Kiln::Content::Markdown.render("one  \ntwo\n")
+  end
+
   test "render_inline drops the paragraph around a single paragraph" do
     assert_equal "Hello <em>there</em>", Kiln::Content::Markdown.render_inline("Hello *there*\n")
     assert_equal "", Kiln::Content::Markdown.render_inline("")

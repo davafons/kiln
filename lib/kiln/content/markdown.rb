@@ -2,7 +2,9 @@ module Kiln
   module Content
     module Markdown
       OPTIONS = {
-        render: { unsafe: true },
+        # Commonmarker turns hardbreaks on by default. Off, a line break inside a paragraph is a
+        # space, as CommonMark says, so files wrapped at a column read as whole paragraphs.
+        render: { unsafe: true, hardbreaks: false },
         extension: { table: true, strikethrough: true, autolink: true, header_ids: "" }
       }.freeze
       PLUGINS = { syntax_highlighter: nil }.freeze
