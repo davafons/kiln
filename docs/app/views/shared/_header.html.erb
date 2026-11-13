@@ -1,6 +1,6 @@
 <header class="sticky top-0 z-sticky h-(--lc-sticky-offset) bg-background">
   <div class="flex min-h-14 items-center justify-between gap-content px-5 sm:px-8 lg:px-10">
-    <a href="<%= page_path(nil) %>" class="flex min-h-11 items-center gap-2 font-semibold no-underline text-inherit"><%= image_tag "kiln.png", alt: "", width: 32, height: 32 %>Kiln</a>
+    <a href="<%= page_path(nil) %>" class="flex min-h-11 items-center gap-2 font-semibold no-underline text-inherit"><img src="/icon.png" alt="" width="32" height="32">Kiln</a>
     <%= lc_button_link_to "https://github.com/davafons/kiln", variant: :ghost, size: :sm, aria: { label: "Source on GitHub" } do %><%= render "shared/github_icon" %><% end %>
   </div>
 </header>
