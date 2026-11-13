@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+Breaking:
+
+- A production build always compiles assets into a temporary directory. An existing
+  `public/assets/.manifest.json` no longer skips the compile, so a stale `public/assets` can't ship
+  old assets.
+
 ## 0.1.3 (2026-11-08)
 
 Breaking:

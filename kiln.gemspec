@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.email       = [ "dav@davafons.com" ]
   spec.homepage    = "https://github.com/davafons/kiln"
   spec.summary     = "Fire a Rails app into a static site."
-  spec.description = "Kiln renders every GET route of a Rails app through Rack and writes plain files that any static host can serve. Routes are the single source of truth, and the build fails loudly."
+  spec.description = "Kiln renders every GET route of a Rails app through Rack and writes plain files that any static host can serve. Every GET route is accounted for, and a build reports every error at once."
   spec.license     = "MIT"
 
   spec.required_ruby_version = ">= 4.0"

@@ -37,11 +37,13 @@ module Kiln
         cleanup
       end
 
+      # A compiled public/assets is ignored: it can be older than the source, and a build must ship the
+      # assets the source compiles to now.
       def precompile?(app)
         assets = app.config.respond_to?(:assets) && app.config.assets
         return false unless assets.respond_to?(:server) && assets.manifest_path
 
-        !assets.server && !Pathname(assets.manifest_path).exist?
+        !assets.server
       end
 
       # Propshaft only adds load paths that exist at boot. On a fresh checkout, a bundler such as

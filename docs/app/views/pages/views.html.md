@@ -53,12 +53,11 @@ Kiln has no hook that runs after a build. A file made from other pages is a rout
 
 Use the asset helpers: `stylesheet_link_tag`, `image_tag` and `javascript_importmap_tags`. They write root-absolute paths, and Kiln finds the files from those references. Only the assets the output references are exported.
 
-The build does one of three things, depending on the environment:
+The build does one of two things, depending on the environment:
 
 | Situation | What the build does |
 |---|---|
-| Production, no `public/assets/.manifest.json` | Precompiles into a temporary directory and leaves `public/assets` alone, so a development server of the same app can run at the same time. |
-| Production, with `public/assets/.manifest.json` | Exports the assets already compiled there, without compiling. Delete that directory if it is stale. |
+| Production | Compiles into a temporary directory and ignores `public/assets`, so a stale compile never ships and a development server of the same app can run at the same time. |
 | Development and test, where assets are served dynamically | Runs the tasks hooked into `assets:precompile`, such as `tailwindcss:build`, `javascript:build` and `css:build`, and exports from the running app. |
 
 JavaScript modules are found through the importmap, and the build fails when a pinned module is missing from the output. Relative `import "./x.js"` between files is not followed.

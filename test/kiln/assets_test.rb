@@ -112,7 +112,7 @@ class Kiln::AssetsTest < Kiln::TestCase
 
     assets.manifest_path.dirname.mkpath
     assets.manifest_path.write("{}")
-    assert_not Kiln::Assets.precompile?(app), "already compiled"
+    assert Kiln::Assets.precompile?(app), "a compiled public/assets can be stale"
 
     assert_nil Kiln::Assets.precompile(dummy_app), "test env serves assets dynamically"
   end
