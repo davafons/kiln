@@ -1,8 +1,6 @@
 module Kiln
   # Checks the built output: internal links, anchors and importmap modules.
   class Verifier
-    LINK_ATTRIBUTES = %w[href src srcset].freeze
-
     def initialize(output, config:)
       @output = Pathname(output)
       @host = config.host.downcase
@@ -25,21 +23,10 @@ module Kiln
         doc = parse(@output.join(file))
         skipped = @skip ? doc.css(@skip).flat_map { [ it, *it.css("*") ] }.to_set : Set.new
 
-        doc.xpath("//*[@href or @src or @srcset]").each do |element|
-          next if skipped.include?(element)
-
-          urls_in(element).each { check_link(it, page) }
+        doc.xpath(Links::ELEMENTS).each do |element|
+          Links.in(element).each { check_link(it, page) } unless skipped.include?(element)
         end
         doc.css('script[type="importmap"]').each { check_importmap(it.text, page) }
-      end
-
-      def urls_in(element)
-        LINK_ATTRIBUTES.flat_map do |name|
-          value = element[name]
-          next [] if value.nil?
-
-          name == "srcset" ? value.split(",").filter_map { it.split.first } : [ value ]
-        end
       end
 
       def check_link(url, page)
@@ -57,16 +44,14 @@ module Kiln
       end
 
       def check_importmap(json, page)
-        map = JSON.parse(json)
-        urls = map.fetch("imports", {}).values + map.fetch("scopes", {}).values.flat_map(&:values)
+        urls = Links.importmap(json) or return error(:importmap, "invalid importmap JSON", page)
+
         urls.each do |url|
           uri = internal_uri(url, page)
           error(:importmap, url, page) if uri && @resolver.resolve(uri.path).nil?
         rescue URI::Error
           error(:importmap, url, page)
         end
-      rescue JSON::ParserError, NoMethodError, TypeError
-        error(:importmap, "invalid importmap JSON", page)
       end
 
       # The URL resolved against the page, or nil when it points somewhere Kiln doesn't serve.

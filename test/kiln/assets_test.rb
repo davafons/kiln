@@ -13,7 +13,6 @@ class Kiln::AssetsTest < Kiln::TestCase
 
   setup do
     @renderer = FakeRenderer.new(dummy_app)
-    @config = Kiln::Configuration.new
     @report = Kiln::Report.new
   end
 
@@ -70,33 +69,20 @@ class Kiln::AssetsTest < Kiln::TestCase
     assert_equal %w[/assets/scoped.js], renderer.requested
   end
 
+  test "never writes an asset outside the output" do
+    renderer = StubRenderer.new("/assets/../../escape.txt" => "x")
+    page "index.html", %(<img src="/assets/../../escape.txt">)
+    export(renderer:)
+
+    assert_equal [ :asset ], @report.errors.map(&:kind)
+    assert_not tmp_output.dirname.join("escape.txt").exist?
+  end
+
   test "strips source maps from JS and CSS" do
     renderer = StubRenderer.new("/assets/a.js" => "a();\n//# sourceMappingURL=a.js.map\n")
     page "index.html", %(<script src="/assets/a.js"></script>)
     export(renderer:)
     assert_equal "a();\n", tmp_output.join("assets/a.js").read
-  end
-
-  test "copies public/ without overwriting rendered files" do
-    public_dir = tmp_output.join("public")
-    out = tmp_output.join("out")
-    public_dir.join("assets").mkpath
-    public_dir.join(".well-known").mkpath
-    public_dir.join("assets/old.css").write("x")
-    public_dir.join(".well-known/security.txt").write("hi")
-    public_dir.join("icon.svg").write("<svg/>")
-    public_dir.join("404.html").write("static")
-    out.mkpath
-    out.join("404.html").write("rendered")
-
-    Kiln::Assets.copy_public(from: public_dir, to: out, report: @report)
-
-    assert_equal "<svg/>", out.join("icon.svg").read
-    assert_equal "hi", out.join(".well-known/security.txt").read
-    assert_equal "rendered", out.join("404.html").read
-    assert_not out.join("assets").exist?
-    assert_equal %w[.well-known/security.txt icon.svg], @report.written.sort
-    assert_equal [ [ :write, "/404.html" ] ], @report.warnings.map { [ it.kind, it.path ] }
   end
 
   test "precompile decision" do
@@ -105,16 +91,16 @@ class Kiln::AssetsTest < Kiln::TestCase
     app = Struct.new(:config).new(Struct.new(:assets).new(assets))
 
     assets.server = true
-    assert_not Kiln::Assets.precompile?(app), "dynamic Propshaft needs no precompile"
+    assert_not Kiln::Assets::Compiler.precompile?(app), "dynamic Propshaft needs no precompile"
 
     assets.server = false
-    assert Kiln::Assets.precompile?(app)
+    assert Kiln::Assets::Compiler.precompile?(app)
 
     assets.manifest_path.dirname.mkpath
     assets.manifest_path.write("{}")
-    assert Kiln::Assets.precompile?(app), "a compiled public/assets can be stale"
+    assert Kiln::Assets::Compiler.precompile?(app), "a compiled public/assets can be stale"
 
-    assert_nil Kiln::Assets.precompile(dummy_app), "test env serves assets dynamically"
+    assert_nil Kiln::Assets::Compiler.run(dummy_app), "test env serves assets dynamically"
   end
 
   test "precompiles into a temp dir, never public/assets, and cleans up" do
@@ -122,7 +108,7 @@ class Kiln::AssetsTest < Kiln::TestCase
     original = assets.slice(:server, :output_path, :manifest_path)
     assets.server = false
 
-    cleanup = Kiln::Assets.precompile(dummy_app)
+    cleanup = Kiln::Assets::Compiler.run(dummy_app)
     dir = assets.output_path
     assert_not_equal original[:output_path], dir
     assert_equal dir.join(".manifest.json"), assets.manifest_path
@@ -140,7 +126,7 @@ class Kiln::AssetsTest < Kiln::TestCase
     assets = dummy_app.config.assets
     original = assets.slice(:server, :output_path, :manifest_path)
     assets.server = false
-    cleanup = Kiln::Assets.precompile(dummy_app)
+    cleanup = Kiln::Assets::Compiler.run(dummy_app)
     renderer = StubRenderer.new({})
     page "logo.html", %(<img src="#{asset_url("logo.svg")}"><img src="/assets/../../Gemfile">)
     export(renderer:)
@@ -153,16 +139,47 @@ class Kiln::AssetsTest < Kiln::TestCase
     assets.merge!(original)
   end
 
+  test "a failed compile removes its directory and restores the asset config" do
+    assets = dummy_app.config.assets
+    original = assets.slice(:server, :output_path, :manifest_path)
+    builds = dummy_app.root.join("app/assets/builds")
+    assets.server = false
+    compiled = nil
+    check = ->(app) { compiled = app.config.assets.output_path; raise Kiln::Error, "builds missing" }
+
+    error = replace_method(Kiln::Assets::Compiler, :check_builds!, check) do
+      assert_raises(Kiln::Error) { Kiln::Assets::Compiler.run(dummy_app) }
+    end
+    assert_equal "builds missing", error.message
+    assert_not compiled.exist?, "the compile directory is removed"
+    assert_equal original.except(:server), assets.slice(:output_path, :manifest_path)
+    assert_not builds.exist?
+  ensure
+    assets.merge!(original)
+  end
+
+  test "a failing bundle build names its task" do
+    require "rake"
+    dummy_app.load_tasks unless Rake::Task.task_defined?("assets:precompile")
+    Rake::Task.define_task("kiln_test:broken") { raise "tailwind exploded" }
+    Rake::Task["assets:precompile"].enhance([ "kiln_test:broken" ])
+
+    error = assert_raises(Kiln::Error) { Kiln::Assets::Compiler.run(dummy_app) }
+    assert_equal "kiln_test:broken failed: RuntimeError: tailwind exploded", error.message
+  ensure
+    Rake::Task["assets:precompile"].prerequisites.delete("kiln_test:broken")
+  end
+
   test "reports an app/assets/builds folder created after boot" do
     builds = dummy_app.root.join("app/assets/builds")
-    assert_nothing_raised { Kiln::Assets.check_builds!(dummy_app) }
+    assert_nothing_raised { Kiln::Assets::Compiler.check_builds!(dummy_app) }
 
     builds.mkpath
-    error = assert_raises(Kiln::Error) { Kiln::Assets.check_builds!(dummy_app) }
+    error = assert_raises(Kiln::Error) { Kiln::Assets::Compiler.check_builds!(dummy_app) }
     assert_includes error.message, "app/assets/builds/.keep"
 
     dummy_app.config.assets.paths << builds
-    assert_nothing_raised { Kiln::Assets.check_builds!(dummy_app) }
+    assert_nothing_raised { Kiln::Assets::Compiler.check_builds!(dummy_app) }
   ensure
     dummy_app.config.assets.paths.delete(builds)
     FileUtils.rm_rf(builds)
@@ -185,7 +202,8 @@ class Kiln::AssetsTest < Kiln::TestCase
     end
 
     def export(renderer: @renderer)
-      Kiln::Assets.new(renderer:, output: tmp_output, config: @config, report: @report).export
+      writer = Kiln::Writer.new(tmp_output, mode: :directory, report: @report)
+      Kiln::Assets.new(renderer:, writer:, host: "localhost", report: @report).export
     end
 
     def render(path, file)
@@ -208,7 +226,7 @@ class Kiln::AssetsTest < Kiln::TestCase
     Rake::Task.define_task("kiln_test:bundle") { runs += 1 }
     Rake::Task["assets:precompile"].enhance([ "kiln_test:bundle" ])
 
-    2.times { assert_nil Kiln::Assets.precompile(dummy_app) }
+    2.times { assert_nil Kiln::Assets::Compiler.run(dummy_app) }
     assert_equal 2, runs, "runs on every build, not once per process"
   ensure
     Rake::Task["assets:precompile"].prerequisites.delete("kiln_test:bundle")

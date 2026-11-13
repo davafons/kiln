@@ -1,6 +1,8 @@
 require "test_helper"
 
 class Kiln::SitemapTest < Kiln::TestCase
+  def writer = Kiln::Writer.new(tmp_output, mode: :directory, report: Kiln::Report.new)
+
   def response(headers = {}, content_type: "text/html; charset=utf-8")
     Kiln::Response.new(path: "/", status: 200, headers: { "content-type" => content_type }.merge(headers), body: "")
   end
@@ -27,7 +29,7 @@ class Kiln::SitemapTest < Kiln::TestCase
     manifest.add("/hidden", file: "hidden/index.html", body: "x", content_type: "text/html", noindex: true)
     manifest.add("/feed.xml", file: "feed.xml", body: "x", content_type: "application/xml")
 
-    assert_equal "sitemap.xml", Kiln::Sitemap.new(manifest, url: "https://example.com/").write(tmp_output)
+    assert_equal "sitemap.xml", Kiln::Sitemap.new(manifest, url: "https://example.com/").write(writer)
     assert_equal <<~XML, tmp_output.join("sitemap.xml").read
       <?xml version="1.0" encoding="UTF-8"?>
       <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

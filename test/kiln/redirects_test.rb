@@ -1,12 +1,14 @@
 require "test_helper"
 
 class Kiln::RedirectsTest < Kiln::TestCase
+  def writer = Kiln::Writer.new(tmp_output, mode: :directory, report: Kiln::Report.new)
+
   test "writes _redirects with same-host locations made relative" do
     entries = [
       Kiln::Redirects::Entry.new(from: "/old", to: "https://example.com/new?a=1#top", status: 301),
       Kiln::Redirects::Entry.new(from: "/out", to: "https://other.com/", status: 302)
     ]
-    assert_equal "_redirects", Kiln::Redirects.new(entries, host: "example.com").write(tmp_output)
+    assert_equal "_redirects", Kiln::Redirects.new(entries, host: "example.com").write(writer)
     assert_equal "/old /new?a=1#top 301\n/out https://other.com/ 302\n", tmp_output.join("_redirects").read
   end
 
@@ -23,7 +25,7 @@ class Kiln::RedirectsTest < Kiln::TestCase
   test "keeps hand-written rules from a copied public/_redirects first" do
     tmp_output.join("_redirects").write("/docs/* /guide/:splat 301\n")
     entries = [ Kiln::Redirects::Entry.new(from: "/old", to: "https://localhost/new", status: 301) ]
-    Kiln::Redirects.new(entries, host: "localhost").write(tmp_output)
+    Kiln::Redirects.new(entries, host: "localhost").write(writer)
 
     assert_equal "/docs/* /guide/:splat 301\n/old /new 301\n", tmp_output.join("_redirects").read
   end

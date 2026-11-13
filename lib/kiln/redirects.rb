@@ -22,11 +22,10 @@ module Kiln
     end
 
     # Rules from a copied public/_redirects come first, so hand-written rules win. Returns the filename.
-    def write(output)
-      file = Pathname(output).join(FILENAME)
+    def write(writer)
+      file = writer.output.join(FILENAME)
       existing = file.exist? ? file.read.chomp.then { it.empty? ? "" : "#{it}\n" } : ""
-      File.write(file, existing + @entries.map { "#{it.from} #{it.to} #{it.status}\n" }.join)
-      FILENAME
+      writer.write_file(FILENAME, existing + @entries.map { "#{it.from} #{it.to} #{it.status}\n" }.join)
     end
 
     private

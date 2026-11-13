@@ -65,6 +65,7 @@ class Kiln::BuildTest < Kiln::TestCase
     sitemap = read("sitemap.xml")
     assert_includes sitemap, "<loc>https://example.com/posts/hello-world/</loc>"
     refute_includes sitemap, "/private", "noindex pages stay out of the sitemap"
+    assert_includes result.report.written, "sitemap.xml"
 
     assert_equal "posts/hello-world/index.html", result.manifest.entries["/posts/hello-world"][:file]
     refute tmp_output.join("kiln-manifest.json").exist?, "the manifest is build state, not part of the site"
@@ -112,6 +113,22 @@ class Kiln::BuildTest < Kiln::TestCase
     assert_equal %w[/posts/missing-one /posts/missing-two], render_errors.map(&:path)
     assert_match "RoutingError", render_errors.first.message
     assert_includes result.report.written, "posts/hello-world/index.html", "good pages are still rendered"
+  end
+
+  test "a page that responds with an error status fails the build" do
+    config = Kiln.config.dup
+    config.not_found = nil
+    report = build(config:).report
+
+    assert_equal [ [ "/not-found", "responded with 404" ] ], report.errors.map { [ it.path, it.message ] }
+  end
+
+  test "a 404 page that responds with neither 200 nor 404 fails the build" do
+    config = Kiln.config.dup
+    config.not_found = "/old-about"
+    report = build(config:).report
+
+    assert_includes report.errors.map { [ it.path, it.message ] }, [ "/old-about", "404 page responded with 301" ]
   end
 
   test "reports broken links found by the verifier" do

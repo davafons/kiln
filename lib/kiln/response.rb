@@ -9,5 +9,10 @@ module Kiln
     def success? = status.between?(200, 299)
     def redirect? = [ 301, 302, 303, 307, 308 ].include?(status)
     def location = headers["location"]
+
+    # The body as a build writes it: HTML without CSRF tokens, anything else unchanged.
+    def output_body
+      html? ? Processors::StripCSRF.call(body) : body
+    end
   end
 end

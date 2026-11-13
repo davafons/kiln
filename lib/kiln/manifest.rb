@@ -12,12 +12,10 @@ module Kiln
 
     def initialize(entries = {})
       @entries = entries
-      @mutex = Mutex.new
     end
 
     def add(path, file:, body:, content_type:, noindex: false)
-      entry = { content_type:, digest: Digest::SHA256.hexdigest(body), file: file.to_s, noindex: }
-      @mutex.synchronize { @entries[path] = entry }
+      @entries[path] = { content_type:, digest: Digest::SHA256.hexdigest(body), file: file.to_s, noindex: }
     end
 
     def entries

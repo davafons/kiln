@@ -20,19 +20,19 @@ module Kiln
       @url = url.chomp("/")
     end
 
-    def write(output)
+    # Returns the relative file written.
+    def write(writer)
       urls = @manifest.entries.filter_map do |path, entry|
         next if entry[:noindex] || entry[:content_type] != "text/html"
 
         "  <url><loc>#{ERB::Util.html_escape(@url + served_path(path, entry[:file]))}</loc></url>\n"
       end
 
-      File.write(Pathname(output).join(FILENAME), <<~XML)
+      writer.write_file(FILENAME, <<~XML)
         <?xml version="1.0" encoding="UTF-8"?>
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
         #{urls.join}</urlset>
       XML
-      FILENAME
     end
 
     private

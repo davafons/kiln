@@ -57,7 +57,7 @@ module Kiln
       response = response_for(path)
       raise Error, "Kiln.render(#{path.inspect}) got a #{response.status} response" unless response.success?
 
-      response.html? ? Processors::StripCSRF.call(response.body) : response.body
+      response.output_body
     end
 
     # The app's response for a path, cached for the build so the build and Kiln.render share it.

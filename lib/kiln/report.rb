@@ -3,29 +3,28 @@ module Kiln
   class Report
     Entry = Data.define(:kind, :message, :path)
 
-    KINDS = %i[uncovered_route render editor_markup asset broken_link missing_anchor importmap redirect write other].freeze
-
-    attr_reader :errors, :warnings, :written
+    attr_reader :errors, :warnings
 
     def initialize
       @errors = []
       @warnings = []
-      @written = []
-      @mutex = Mutex.new
+      @written = Set.new
     end
 
     def error(kind, message, path: nil)
-      @mutex.synchronize { @errors << Entry.new(kind:, message:, path:) }
+      @errors << Entry.new(kind:, message:, path:)
     end
 
     def warn(kind, message, path: nil)
-      @mutex.synchronize { @warnings << Entry.new(kind:, message:, path:) }
+      @warnings << Entry.new(kind:, message:, path:)
     end
 
-    # Records a file written to the output (relative path).
+    # Records a file written to the output (relative path). A file written twice counts once.
     def wrote(file)
-      @mutex.synchronize { @written << file.to_s }
+      @written << file.to_s
     end
+
+    def written = @written.to_a
 
     def success? = errors.empty?
     def failure? = !success?
@@ -42,7 +41,7 @@ module Kiln
           entries.each { lines << "    #{format_entry(it)}" }
         end
       else
-        lines << "#{title} succeeded: #{written.size} #{"file".pluralize(written.size)} written."
+        lines << "#{title} succeeded: #{@written.size} #{"file".pluralize(@written.size)} written."
       end
       lines.join("\n")
     end
