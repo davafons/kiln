@@ -1,5 +1,3 @@
-<img src="/icon.png" alt="Kiln mascot, a small brick kiln" width="96" height="96">
-
 # Introduction
 
 Kiln builds a Rails app into a static site. It sends a GET request through Rack for every route and writes each response to a file. Any static host can serve the result.
