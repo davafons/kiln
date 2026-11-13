@@ -11,7 +11,7 @@ Use jj for version control; preserve unrelated work and never use mutating Git c
 - Keep the configuration small: add an option only when a site using Kiln needs it.
 - `kiln/content` and `kiln/test_helper` stay outside the Zeitwerk loader: production eager loading must not require commonmarker or Minitest.
 - `test/dummy` is the integration fixture. Its routes feed the coverage check, so every new route needs a param source, a skip, or no params.
-- Run `bin/lint` and `bin/test` for code changes. `bin/house-rules` enforces the writing rules a grep can decide.
+- Run `bin/lint` and `bin/test` for code changes. `test/kiln/tasks_test.rb` runs the rake tasks in a production subprocess. The randomized path tests take `KILN_FUZZ_ROUNDS` for more rounds, and `bin/test --seed N` replays a failure. `bin/house-rules` enforces the writing rules a grep can decide.
 - Releases publish from a `vX.Y.Z` tag through trusted publishing. Never run `gem push`, and never tag without the user's approval.
 - No AI attribution in commits, pull requests or files.
 
