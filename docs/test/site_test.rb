@@ -11,7 +11,6 @@ class SiteTest < ActiveSupport::TestCase
       assert_not output.join("introduction.html").exist?
       assert output.join("404.html").file?
       assert_includes output.join("llms.txt").read, "(https://kiln.davafons.com/):"
-      assert_equal "kiln.davafons.com\n", output.join("CNAME").read
     end
   end
 

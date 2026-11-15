@@ -1,26 +1,46 @@
 # Deploying
 
-The output is a directory of plain files, so any static host can serve it. Kiln has been used on Cloudflare Pages and GitHub Pages. Other hosts should work, and the notes on Netlify below come from its documented `_redirects` format, not from a test.
+The output is a directory of plain files, so any static host can serve it. Kiln has been used on Cloudflare Workers static assets, Cloudflare Pages and GitHub Pages. Other hosts should work, and the notes on Netlify below come from its documented `_redirects` format, not from a test.
 
 ## What each host reads
 
 | File | Written when | Read by |
 |---|---|---|
-| `404.html` | `not_found` is set | Cloudflare Pages, GitHub Pages and Netlify, for unknown paths. |
-| `_redirects` | A route redirects, or `public/_redirects` exists | Cloudflare Pages and Netlify. GitHub Pages ignores it. |
+| `404.html` | `not_found` is set | Cloudflare, GitHub Pages and Netlify, for unknown paths. |
+| `_redirects` | A route redirects, or `public/_redirects` exists | Cloudflare and Netlify. GitHub Pages ignores it. |
 | `CNAME` | `cname` is set | GitHub Pages, for a custom domain. |
 | `sitemap.xml` | `url` is set | Search engines. |
 
-`/about` is written to `about.html`, and every URL Kiln writes has no trailing slash. Cloudflare serves `about.html` at `/about` and redirects `/about/` and `/about.html` to it with a 307, as documented for [Workers static assets](https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/). Cloudflare Pages documents the `/about.html` redirect. This layout is not verified on GitHub Pages: check `/about` and `/about/` after the first deploy.
+`/about` is written to `about.html`, and every URL Kiln writes has no trailing slash. Cloudflare serves `about.html` at `/about` and redirects `/about/` and `/about.html` to it with a 307, as documented for [Workers static assets](https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/). Cloudflare Pages documents the `/about.html` redirect. GitHub Pages serves `about.html` at `/about` and at `/about.html`, and answers `/about/` with its 404 page.
 
-## Cloudflare Pages
+## Cloudflare
 
-Build in CI and upload the output with Wrangler:
+Serve the output as [Workers static assets](https://developers.cloudflare.com/workers/static-assets/). No Worker code runs, and requests to static assets are free. A `wrangler.jsonc` next to the app:
+
+```jsonc
+{
+  "name": "my-site",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "assets": {
+    "directory": "dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "example.com", "custom_domain": true }]
+}
+```
+
+Build, then deploy with a `CLOUDFLARE_API_TOKEN` that can edit Workers:
 
 ```sh
 RAILS_ENV=production bin/rails kiln:build
-npx wrangler pages deploy dist --project-name=my-site
+npx wrangler deploy
 ```
+
+Cloudflare reads `_redirects` from the assets directory. A custom domain cannot be added while the hostname has a CNAME record, so remove an old record, such as one pointing at GitHub Pages, first. This site deploys this way, with a [GitHub Actions workflow](https://github.com/davafons/kiln/blob/main/.github/workflows/docs.yml).
+
+Cloudflare Pages also works: `npx wrangler pages deploy dist --project-name=my-site`.
 
 ## GitHub Pages
 
@@ -61,8 +81,6 @@ jobs:
     steps:
       - uses: actions/deploy-pages@v5
 ```
-
-This site deploys with a [workflow like it](https://github.com/davafons/kiln/blob/main/.github/workflows/docs.yml).
 
 ## Committed output
 

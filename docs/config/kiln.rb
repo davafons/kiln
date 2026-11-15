@@ -1,6 +1,5 @@
 Kiln.configure do |config|
   config.url = "https://kiln.davafons.com"
-  config.cname = true
   config.not_found = "/404"
 end
 

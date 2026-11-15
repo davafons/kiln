@@ -1,0 +1,14 @@
+// Serves the built site, dist/, at kiln.davafons.com. Static files only: no Worker code runs.
+// "auto-trailing-slash" serves pages.html at /pages and redirects /pages/ and /pages.html there.
+{
+  "name": "kiln-docs",
+  "account_id": "d6619f1b5d5f89902029c436a998bae7",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "assets": {
+    "directory": "dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "kiln.davafons.com", "custom_domain": true }]
+}
