@@ -7,6 +7,7 @@
     <title><%= [ @page&.title || "Page not found", "Kiln" ].join(" · ") %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="description" content="<%= @page&.description || "Kiln builds a Rails app into a static site." %>">
+    <% unless response.not_found? %><link rel="canonical" href="<%= Kiln.config.url + request.path %>"><% end %>
     <% unless @page %><meta name="robots" content="noindex"><% end %>
     <link rel="icon" href="/icon.png" type="image/png">
     <link rel="apple-touch-icon" href="/icon.png">
