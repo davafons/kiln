@@ -20,6 +20,13 @@ class Kiln::ServerTest < Kiln::TestCase
     assert_equal "home", get("/").body
   end
 
+  test "redirects other spellings of a page with a 307, keeping the query" do
+    response = get("/about/?ref=x")
+    assert_equal 307, response.status
+    assert_equal "/about?ref=x", response.location
+    assert_equal "/about", get("/about.html").location
+  end
+
   test "follows exact _redirects rules" do
     response = get("/old")
     assert_equal 301, response.status

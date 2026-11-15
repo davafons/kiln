@@ -4,8 +4,6 @@ module Kiln
     attr_accessor :output
     # Public base URL ("https://davafons.com"). Sets the request host and enables sitemap.xml.
     attr_accessor :url
-    # :directory ("/now" -> now/index.html) or :file ("/now" -> now.html).
-    attr_accessor :paths
     # Writes a CNAME file with this domain when set. true takes the host from `url`.
     attr_accessor :cname
     # Path rendered to 404.html (expected to respond with 404 or 200), nil to skip.
@@ -19,7 +17,6 @@ module Kiln
     def initialize
       @output = "dist"
       @url = nil
-      @paths = :directory
       @cname = nil
       @not_found = nil
       @verify_skip = []

@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+Breaking:
+
+- The `paths` option is removed, and every page URL has no trailing slash. `/about` is written to
+  `about.html` instead of `about/index.html`, route helpers return `/about`, and the sitemap lists
+  `/about`. Kiln no longer sets `trailing_slash` in `default_url_options`. Relative links between
+  pages resolve against the new URLs: from `/posts`, `hello` is `/hello`.
+- An HTML response always gets `.html`, also when the last segment has a dot: `/posts/v1.2` is
+  written to `posts/v1.2.html` instead of `posts/v1.2`.
+- `Kiln::Writer.new` no longer takes `mode:`.
+
+Added:
+
+- A link to a URL the host redirects, such as `/about/` or `/about.html` for `about.html`, fails the
+  build as a redirected link.
+- `kiln:serve` redirects `/about/` and `/about.html` to `/about`, and `/docs` to `/docs/` when only
+  `docs/index.html` exists, with a 307, as Cloudflare does by default.
+
 ## 0.1.6 (2026-11-14)
 
 Fixed:

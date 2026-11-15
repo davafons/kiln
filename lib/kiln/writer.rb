@@ -6,29 +6,26 @@ module Kiln
   class Writer
     attr_reader :output
 
-    def initialize(output, mode:, report:)
-      raise Kiln::Error, "Unknown paths mode #{mode.inspect} (expected :directory or :file)" unless %i[directory file].include?(mode)
-
+    def initialize(output, report:)
       @output = Pathname(output).expand_path
-      @mode = mode
       @report = report
     end
 
-    # Relative file for a request path: "/now" -> "now/index.html" (or "now.html" in :file mode).
+    # Relative file for a request path. "/" is index.html. An HTML response is written with .html
+    # unless its path already ends in .html: "/now" -> "now.html", "/posts/v1.2" -> "posts/v1.2.html".
+    # Other responses keep their extension, or get one from the MIME type: "/api/status" -> "api/status.json".
     def file_for(path, content_type)
       segments = segments_for(path)
       content_type = content_type.to_s.split(";").first.to_s.strip.downcase
       return "index.html" if segments.empty?
 
       name = segments.last
-      if File.extname(name).empty?
-        if content_type == "text/html"
-          segments = @mode == :directory ? [ *segments, "index.html" ] : [ *segments[...-1], "#{name}.html" ]
-        elsif (extension = extension_for(content_type))
-          segments = [ *segments[...-1], "#{name}.#{extension}" ]
-        end
+      if content_type == "text/html"
+        name = "#{name}.html" unless name.end_with?(".html")
+      elsif File.extname(name).empty? && (extension = extension_for(content_type))
+        name = "#{name}.#{extension}"
       end
-      segments.join("/")
+      [ *segments[...-1], name ].join("/")
     end
 
     def write(path, content_type, body)

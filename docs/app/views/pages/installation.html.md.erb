@@ -30,7 +30,7 @@ Kiln.pages do
 end
 ```
 
-`url` is the site's public address, and `sitemap.xml` is written only when it is set. `not_found` is the route that becomes `404.html`. [Configuration](/configuration/) lists every option.
+`url` is the site's public address, and `sitemap.xml` is written only when it is set. `not_found` is the route that becomes `404.html`. [Configuration](/configuration) lists every option.
 
 `Kiln.pages` says what to do with routes that have params. Leave it out if no route has any. If you are not sure which routes need it, run a build: the errors give the lines to add. Param sources are lambdas, so they can name models that are not loaded yet when this file loads.
 
@@ -42,7 +42,7 @@ RAILS_ENV=production bin/rails kiln:build
 
 Set `RAILS_ENV` yourself for a site you deploy. Rails picks the gem groups before the task starts, so the task cannot set it.
 
-The site goes to `dist/`. Add `dist/` to `.gitignore`, unless you [commit the output](/deploying/#committed-output) on purpose. From the second build on, the output lists what changed:
+The site goes to `dist/`. Add `dist/` to `.gitignore`, unless you [commit the output](/deploying#committed-output) on purpose. From the second build on, the output lists what changed:
 
 ```text
 Kiln build succeeded: 9 files written.
@@ -51,7 +51,7 @@ Pages since last build: 0 added, 0 removed, 1 changed
 Output: /path/to/app/dist (production, 0.1s)
 ```
 
-If a build fails, the [error reference](/build/#errors) explains each message. Set `VERBOSE=1` to see the request log.
+If a build fails, the [error reference](/build#errors) explains each message. Set `VERBOSE=1` to see the request log.
 
 ## 5. Look at the output
 
@@ -61,4 +61,4 @@ bin/rails kiln:serve
 
 This serves `dist/` at `http://localhost:4000`, close to how a static host does. Set `PORT` and `BIND` to change the address. It is for checking a build. To work on pages, use `bin/rails server`.
 
-Next, [deploy the output](/deploying/), or read about [pages](/pages/) to declare the rest of your routes.
+Next, [deploy the output](/deploying), or read about [pages](/pages) to declare the rest of your routes.

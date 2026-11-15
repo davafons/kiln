@@ -25,7 +25,7 @@ class Kiln::ReportTest < Kiln::TestCase
 
   test "a success counts the files written" do
     report = Kiln::Report.new
-    %w[index.html index.html about/index.html].each { report.wrote(it) }
+    %w[index.html index.html about.html].each { report.wrote(it) }
 
     assert report.success?
     assert_equal "Kiln build succeeded: 2 files written.", report.to_s

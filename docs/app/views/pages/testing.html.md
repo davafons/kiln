@@ -43,7 +43,7 @@ class SiteTest < ActiveSupport::TestCase
   end
 
   test "every post has a page" do
-    Post.all.each { assert kiln_site.join("posts", it.slug, "index.html").file? }
+    Post.all.each { assert kiln_site.join("posts", "#{it.slug}.html").file? }
   end
 end
 ```

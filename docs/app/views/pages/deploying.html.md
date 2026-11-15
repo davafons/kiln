@@ -11,7 +11,7 @@ The output is a directory of plain files, so any static host can serve it. Kiln 
 | `CNAME` | `cname` is set | GitHub Pages, for a custom domain. |
 | `sitemap.xml` | `url` is set | Search engines. |
 
-With the default `paths: :directory`, `/about` is written to `about/index.html`. Cloudflare Pages and GitHub Pages serve that file at `/about/` and redirect `/about` to it. With `paths: :file`, it is written to `about.html` and served at `/about`.
+`/about` is written to `about.html`, and every URL Kiln writes has no trailing slash. Cloudflare serves `about.html` at `/about` and redirects `/about/` and `/about.html` to it with a 307, as documented for [Workers static assets](https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/). Cloudflare Pages documents the `/about.html` redirect. This layout is not verified on GitHub Pages: check `/about` and `/about/` after the first deploy.
 
 ## Cloudflare Pages
 
@@ -79,4 +79,4 @@ RAILS_ENV=production bin/rails kiln:build
 test -z "$(git status --porcelain docs)"
 ```
 
-This needs a build that renders the same bytes every time, which [`kiln_build(repeatable: true)`](/testing/#kiln_build) checks in tests.
+This needs a build that renders the same bytes every time, which [`kiln_build(repeatable: true)`](/testing#kiln_build) checks in tests.

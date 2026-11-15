@@ -18,7 +18,7 @@ class Kiln::AssetsTest < Kiln::TestCase
 
   test "exports referenced assets, CSS url() targets and importmap modules" do
     render "/", "index.html"
-    render "/about", "about/index.html"
+    render "/about", "about.html"
     export
 
     assert_empty @report.errors
@@ -202,7 +202,7 @@ class Kiln::AssetsTest < Kiln::TestCase
     end
 
     def export(renderer: @renderer)
-      writer = Kiln::Writer.new(tmp_output, mode: :directory, report: @report)
+      writer = Kiln::Writer.new(tmp_output, report: @report)
       Kiln::Assets.new(renderer:, writer:, host: "localhost", report: @report).export
     end
 

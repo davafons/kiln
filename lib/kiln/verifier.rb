@@ -1,5 +1,6 @@
 module Kiln
-  # Checks the built output: internal links, anchors and importmap modules.
+  # Checks the built output: internal links, anchors and importmap modules. A link to a URL the host
+  # answers with a redirect, such as "/about/" for about.html, is an error: links use the served URL.
   class Verifier
     def initialize(output, config:)
       @output = Pathname(output)
@@ -34,7 +35,11 @@ module Kiln
         target = @resolver.resolve(uri.path)
 
         if target.nil?
-          error(:broken_link, url, page) unless @redirect_sources.include?(uri.path)
+          if (location = @resolver.redirect(uri.path))
+            error(:redirected_link, "#{url} (served at #{location})", page)
+          elsif !@redirect_sources.include?(uri.path)
+            error(:broken_link, url, page)
+          end
         elsif uri.fragment.present? && uri.fragment != "top" && target.extname == ".html"
           fragment = Rack::Utils.unescape_path(uri.fragment)
           error(:missing_anchor, url, page) unless anchors(target).include?(fragment)
@@ -71,7 +76,7 @@ module Kiln
         Nokogiri::HTML5(file.read)
       end
 
-      # The URL a file is served at: index.html -> /, now/index.html -> /now/, components.html -> /components.
+      # The URL a file is served at: index.html -> /, docs/index.html -> /docs/, now.html -> /now.
       def page_path(file)
         path = "/#{file}"
         return path.delete_suffix("index.html") if File.basename(file) == "index.html"

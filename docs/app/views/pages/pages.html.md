@@ -13,7 +13,7 @@ get "about", to: "pages#about"
 get "blog", to: "posts#index"
 ```
 
-`/` is written to `index.html`, `/about` to `about/index.html` and `/blog` to `blog/index.html`. Optional segments such as `(:locale)` do not count as required.
+`/` is written to `index.html`, `/about` to `about.html` and `/blog` to `blog.html`. Optional segments such as `(:locale)` do not count as required.
 
 ## Param sources
 
@@ -126,12 +126,10 @@ get "llms", to: "pages#llms", defaults: { format: :text } # llms.txt
 get "robots.txt", to: "pages#robots"                      # robots.txt, as written
 ```
 
-For a file that does not come from a route, such as a license text, use the [`files` option](/configuration/#files).
+For a file that does not come from a route, such as a license text, use the [`files` option](/configuration#files).
 
 ## Trailing slashes
 
-With the default `paths: :directory`, `/about` is written to `about/index.html`, which static hosts serve at `/about/`. So Kiln sets `trailing_slash: true` in the app's `default_url_options`, and `about_path` returns `/about/`, on a development server too.
+A page's URL has no trailing slash: `/about` is written to `about.html`, and `about_path` returns `/about`. An HTML response always gets `.html`, also when the last segment has a dot: `/posts/v1.2` is written to `posts/v1.2.html`. Whether Cloudflare serves such a file at `/posts/v1.2` is not verified.
 
-Paths with a dot, such as `/feed.xml`, keep no slash. An app that sets `trailing_slash` in `Rails.application.routes.default_url_options` keeps its own value.
-
-With `paths: :file`, `/about` is written to `about.html` and route helpers are unchanged.
+On Cloudflare, `/about/` redirects to `/about`. A link to `/about/` in the output fails the build as a redirected link, so the site's own links always point at the served URL. An app that sets `trailing_slash: true` in `default_url_options` gets that error on every page.

@@ -12,9 +12,8 @@ class Kiln::BuildTest < Kiln::TestCase
     assert result.report.success?, result.report.to_s
 
     %w[
-      index.html about/index.html guide/index.html posts/index.html posts/hello-world/index.html
-      posts/second-post/index.html private/index.html contact/index.html es/contact/index.html
-      ja/contact/index.html feed.xml health.json ping.txt 404.html
+      index.html about.html guide.html posts.html posts/hello-world.html posts/second-post.html
+      private.html contact.html es/contact.html ja/contact.html feed.xml health.json ping.txt 404.html
       icon.svg _redirects sitemap.xml
     ].each { assert tmp_output.join(it).file?, "expected #{it}" }
 
@@ -28,7 +27,7 @@ class Kiln::BuildTest < Kiln::TestCase
     home = read("index.html")
     assert_includes home, "<h1>Home</h1>"
     refute_includes home, "dev-panel", "Kiln.building? hides dev-only markup"
-    assert_includes read("guide/index.html"), "there are 2 posts"
+    assert_includes read("guide.html"), "there are 2 posts"
     assert_includes read("404.html"), "Not found"
     assert_equal({ "status" => "ok", "posts" => 2 }, JSON.parse(read("health.json")))
     assert_equal "pong", read("ping.txt")
@@ -63,34 +62,32 @@ class Kiln::BuildTest < Kiln::TestCase
     assert_equal "/old-about /about 301\n", read("_redirects")
 
     sitemap = read("sitemap.xml")
-    assert_includes sitemap, "<loc>https://example.com/posts/hello-world/</loc>"
+    assert_includes sitemap, "<loc>https://example.com/posts/hello-world</loc>"
     refute_includes sitemap, "/private", "noindex pages stay out of the sitemap"
     assert_includes result.report.written, "sitemap.xml"
 
-    assert_equal "posts/hello-world/index.html", result.manifest.entries["/posts/hello-world"][:file]
+    assert_equal "posts/hello-world.html", result.manifest.entries["/posts/hello-world"][:file]
     refute tmp_output.join("kiln-manifest.json").exist?, "the manifest is build state, not part of the site"
   end
 
-  test "file mode" do
-    config = Kiln.config.dup
-    config.paths = :file
-    # The railtie decides trailing slashes at boot from config.paths; this app boots in :directory.
-    options = Rails.application.routes.default_url_options
-    options.delete(:trailing_slash)
-    assert build(config:).report.success?
-    assert tmp_output.join("about.html").file?
-    assert tmp_output.join("posts/hello-world.html").file?
-    assert_includes read("about.html"), %(href="/posts")
-  ensure
-    options[:trailing_slash] = true
-  end
-
-  test "route helpers link to the served URL in directory mode" do
+  test "route helpers link to the served URL, without a trailing slash" do
     build
-    html = read("posts/index.html")
-    assert_includes html, %(href="/posts/hello-world/")
+    html = read("posts.html")
+    assert_includes html, %(href="/posts/hello-world")
+    assert_includes html, %(href="/about")
     assert_includes html, %(href="/feed.xml")
     assert_includes html, %(href="/")
+  end
+
+  test "a link with a trailing slash fails the build" do
+    options = Rails.application.routes.default_url_options
+    options[:trailing_slash] = true
+    report = build.report
+
+    assert report.failure?
+    assert_includes report.errors.map { [ it.kind, it.message, it.path ] }, [ :redirected_link, "/about/ (served at /about)", "/" ]
+  ensure
+    options.delete(:trailing_slash)
   end
 
   test "uncovered routes fail the build and name the route" do
@@ -112,7 +109,7 @@ class Kiln::BuildTest < Kiln::TestCase
     render_errors = result.report.errors.select { it.kind == :render }
     assert_equal %w[/posts/missing-one /posts/missing-two], render_errors.map(&:path)
     assert_match "RoutingError", render_errors.first.message
-    assert_includes result.report.written, "posts/hello-world/index.html", "good pages are still rendered"
+    assert_includes result.report.written, "posts/hello-world.html", "good pages are still rendered"
   end
 
   test "a page that responds with an error status fails the build" do

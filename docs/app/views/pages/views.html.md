@@ -12,7 +12,7 @@ Views are ordinary Rails views. A build renders them through the app's full Rack
 <% end %>
 ```
 
-It is also true inside `assert_page` from the [test helper](/testing/), so a test sees the page a build writes.
+It is also true inside `assert_page` from the [test helper](/testing), so a test sees the page a build writes.
 
 ## Kiln.build_cache
 
@@ -85,7 +85,7 @@ end
 
 ## Editor markup
 
-In-page editors add source-position attributes to the HTML: Herb's source attribution adds `data-herb-*`, [Tensaku](https://tensaku.lostcoords.com) adds `data-tensaku-*`, and the Markdown layer adds [`data-md-source`](/content/#source-positions) when it is on. The build fails when any of them reaches a page, and the error lists the pages. Turn them off outside development, or build in production.
+In-page editors add source-position attributes to the HTML: Herb's source attribution adds `data-herb-*`, [Tensaku](https://tensaku.lostcoords.com) adds `data-tensaku-*`, and the Markdown layer adds [`data-md-source`](/content#source-positions) when it is on. The build fails when any of them reaches a page, and the error lists the pages. Turn them off outside development, or build in production.
 
 ## Forms
 

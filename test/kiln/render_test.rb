@@ -40,7 +40,7 @@ class Kiln::RenderTest < Kiln::TestCase
     subscriber = ActiveSupport::Notifications.subscribe("process_action.action_controller") { paths << it.payload[:path] }
     Kiln::Build.new(output: tmp_output).run
 
-    assert_equal({ "/about/" => "About", "/guide/" => "Guide" }, JSON.parse(tmp_output.join("titles.json").read))
+    assert_equal({ "/about" => "About", "/guide" => "Guide" }, JSON.parse(tmp_output.join("titles.json").read))
     assert_equal paths.uniq, paths
   ensure
     ActiveSupport::Notifications.unsubscribe(subscriber)

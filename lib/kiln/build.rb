@@ -58,7 +58,7 @@ module Kiln
       end
 
       def writer
-        @writer ||= Writer.new(@stage, mode: config.paths, report:)
+        @writer ||= Writer.new(@stage, report:)
       end
 
       def render_pages

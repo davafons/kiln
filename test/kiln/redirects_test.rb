@@ -1,7 +1,7 @@
 require "test_helper"
 
 class Kiln::RedirectsTest < Kiln::TestCase
-  def writer = Kiln::Writer.new(tmp_output, mode: :directory, report: Kiln::Report.new)
+  def writer = Kiln::Writer.new(tmp_output, report: Kiln::Report.new)
 
   test "writes _redirects with same-host locations made relative" do
     entries = [

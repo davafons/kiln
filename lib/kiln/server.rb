@@ -1,7 +1,8 @@
 require "rack/mime"
 
 module Kiln
-  # Rack app that serves the built output the way a static host would.
+  # Rack app that serves the built output the way Cloudflare does: _redirects rules, then files, then
+  # 307 redirects to the URL a page is served at, then 404.html.
   class Server
     def self.start(root, port:, host: "localhost")
       require "rackup"
@@ -21,7 +22,10 @@ module Kiln
         [ redirect.status, { "location" => redirect.to }, [] ]
       elsif (file = @resolver.resolve(path))
         serve(200, file)
-      elsif (not_found = @resolver.resolve("/404.html"))
+      elsif (location = @resolver.redirect(path))
+        query = env["QUERY_STRING"].presence
+        [ 307, { "location" => query ? "#{location}?#{query}" : location }, [] ]
+      elsif (not_found = @resolver.resolve("/404"))
         serve(404, not_found)
       else
         [ 404, { "content-type" => "text/plain" }, [ "Not found\n" ] ]

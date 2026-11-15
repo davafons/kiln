@@ -14,13 +14,12 @@ end
 |---|---|---|
 | [`output`](#output) | `"dist"` | Output directory. |
 | [`url`](#url) | `nil` | Public base URL. |
-| [`paths`](#paths) | `:directory` | How a path maps to a file. |
 | [`cname`](#cname) | `nil` | Host for a `CNAME` file. |
 | [`not_found`](#not_found) | `nil` | Path rendered to `404.html`. |
 | [`files`](#files) | `{}` | Files to copy that are not routes. |
 | [`verify_skip`](#verify_skip) | `[]` | Selectors the link check ignores. |
 
-Routes with params go in `Kiln.pages`, covered on [Pages](/pages/). The Markdown layer has its own settings, covered on [Markdown](/content/).
+Routes with params go in `Kiln.pages`, covered on [Pages](/pages). The Markdown layer has its own settings, covered on [Markdown](/content).
 
 ## output
 
@@ -36,13 +35,6 @@ The site's public address, such as `"https://example.com"`.
 - Links to that host count as internal in the link check.
 - `sitemap.xml` is written only when `url` is set.
 - When the app restricts hosts with `config.hosts`, Kiln adds this host to the list.
-
-## paths
-
-| Value | `/now` is written to | Route helpers |
-|---|---|---|
-| `:directory` | `now/index.html` | Add a [trailing slash](/pages/#trailing-slashes). |
-| `:file` | `now.html` | Unchanged. |
 
 ## cname
 

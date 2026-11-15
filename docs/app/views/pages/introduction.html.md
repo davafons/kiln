@@ -44,9 +44,9 @@ RAILS_ENV=production bin/rails kiln:build
 ```text
 dist/
 ├── index.html
-├── about/index.html
-├── blog/hello/index.html
-├── blog/second-post/index.html
+├── about.html
+├── blog/hello.html
+├── blog/second-post.html
 ├── feed.rss
 ├── 404.html
 ├── sitemap.xml
@@ -71,24 +71,24 @@ Kiln build failed with 3 errors:
 Output left unchanged: /path/to/app/dist (production, 0.1s)
 ```
 
-The [build reference](/build/#errors) lists every kind of error.
+The [build reference](/build#errors) lists every kind of error.
 
 ## What does not work
 
-The output is plain files, so nothing runs per request. Forms, sessions and server-side search need an external service, or their routes need to be skipped. [Known limits](/limits/) has the full list.
+The output is plain files, so nothing runs per request. Forms, sessions and server-side search need an external service, or their routes need to be skipped. [Known limits](/limits) has the full list.
 
 ## Requirements
 
-Ruby 4.0 or later and Rails 8.1 or later. The optional [Markdown layer](/content/) also needs the commonmarker and rouge gems.
+Ruby 4.0 or later and Rails 8.1 or later. The optional [Markdown layer](/content) also needs the commonmarker and rouge gems.
 
 Kiln is at an early version and breaking changes are possible in any release. The [changelog](https://github.com/davafons/kiln/blob/main/CHANGELOG.md) lists them.
 
 ## Where to go next
 
-- [Install Kiln](/installation/) and run a first build.
-- Declare [pages](/pages/) for routes with params, redirects and feeds.
-- Read what is different about [views and assets](/views/) during a build.
-- Render [Markdown](/content/) views and collections.
-- [Test](/testing/) the site and [deploy](/deploying/) it.
+- [Install Kiln](/installation) and run a first build.
+- Declare [pages](/pages) for routes with params, redirects and feeds.
+- Read what is different about [views and assets](/views) during a build.
+- Render [Markdown](/content) views and collections.
+- [Test](/testing) the site and [deploy](/deploying) it.
 
 This site is a Rails app built with Kiln. Its source is in the [docs folder](https://github.com/davafons/kiln/tree/main/docs) of the repository.

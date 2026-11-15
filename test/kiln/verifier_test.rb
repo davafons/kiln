@@ -17,7 +17,7 @@ class Kiln::VerifierTest < Kiln::TestCase
       "index.html" => <<~HTML,
         <link rel="stylesheet" href="/assets/app.css">
         <link rel="canonical" href="https://example.com/">
-        <a href="now/">Now</a> <a href="/now#today">Today</a> <a href="#top">Top</a> <a href="#main">Main</a>
+        <a href="now">Now</a> <a href="/now#today">Today</a> <a href="docs/">Docs</a> <a href="#top">Top</a> <a href="#main">Main</a>
         <a href="mailto:me@example.com">Mail</a> <a href="tel:123">Call</a> <a href="javascript:void(0)">JS</a>
         <a href="https://other.com/missing">Out</a> <a href="//cdn.other.com/x.js">CDN</a>
         <img src="data:image/png;base64,AAAA" srcset="/assets/logo.svg 1x, /assets/logo.svg 2x">
@@ -25,7 +25,8 @@ class Kiln::VerifierTest < Kiln::TestCase
         <main id="main"></main>
         <script type="importmap">{"imports": {"app": "/assets/app.js"}, "scopes": {"/assets/": {"x": "/assets/app.js"}}}</script>
       HTML
-      "now/index.html" => %(<h2 id="today">Today</h2><a href="../">Home</a><a name="legacy"></a><a href="#legacy">L</a>),
+      "now.html" => %(<h2 id="today">Today</h2><a href="/">Home</a><a name="legacy"></a><a href="#legacy">L</a>),
+      "docs/index.html" => %(<a href="../">Home</a> <a href="../now">Now</a>),
       "about.html" => %(<a href="/">Home</a>),
       "assets/app.css" => "",
       "assets/app.js" => "",
@@ -59,6 +60,21 @@ class Kiln::VerifierTest < Kiln::TestCase
       [ :importmap, "/assets/app.js", "/" ],
       [ :broken_link, "sub", "/about" ],
       [ :importmap, "invalid importmap JSON", "/bad/" ]
+    ].sort, errors(report).sort
+  end
+
+  test "reports links to a URL the host redirects" do
+    report = site(
+      "index.html" => %(<a href="/about/">1</a> <a href="/about.html#team">2</a> <a href="/docs">3</a> <a href="/docs/index.html">4</a>),
+      "about.html" => %(<h2 id="team">Team</h2>),
+      "docs/index.html" => ""
+    )
+
+    assert_equal [
+      [ :redirected_link, "/about/ (served at /about)", "/" ],
+      [ :redirected_link, "/about.html#team (served at /about)", "/" ],
+      [ :redirected_link, "/docs (served at /docs/)", "/" ],
+      [ :redirected_link, "/docs/index.html (served at /docs/)", "/" ]
     ].sort, errors(report).sort
   end
 

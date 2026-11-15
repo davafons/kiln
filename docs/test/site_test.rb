@@ -7,8 +7,8 @@ class SiteTest < ActiveSupport::TestCase
   test "every page is built, and the introduction is the home page" do
     kiln_build(repeatable: true) do |output|
       assert_includes output.join("index.html").read, "<h1"
-      Docs::PAGES.filter_map(&:slug).each { assert output.join(it, "index.html").file?, "#{it} was not built" }
-      assert_not output.join("introduction").exist?
+      Docs::PAGES.filter_map(&:slug).each { assert output.join("#{it}.html").file?, "#{it} was not built" }
+      assert_not output.join("introduction.html").exist?
       assert output.join("404.html").file?
       assert_includes output.join("llms.txt").read, "(https://kiln.davafons.com/):"
       assert_equal "kiln.davafons.com\n", output.join("CNAME").read

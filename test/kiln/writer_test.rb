@@ -1,26 +1,24 @@
 require "test_helper"
 
 class Kiln::WriterTest < Kiln::TestCase
-  test "maps paths in directory mode" do
-    writer = Kiln::Writer.new(tmp_output, mode: :directory, report: Kiln::Report.new)
-
-    assert_equal "index.html", writer.file_for("/", "text/html")
-    assert_equal "now/index.html", writer.file_for("/now", "text/html")
-    assert_equal "now/index.html", writer.file_for("/now/", "text/html")
-    assert_equal "blog/2024/post/index.html", writer.file_for("/blog/2024/post", "text/html")
-  end
-
-  test "maps paths in file mode" do
-    writer = Kiln::Writer.new(tmp_output, mode: :file, report: Kiln::Report.new)
+  test "writes HTML pages as .html files" do
+    writer = Kiln::Writer.new(tmp_output, report: Kiln::Report.new)
 
     assert_equal "index.html", writer.file_for("/", "text/html")
     assert_equal "now.html", writer.file_for("/now", "text/html")
     assert_equal "now.html", writer.file_for("/now/", "text/html")
-    assert_equal "components/button.html", writer.file_for("/components/button", "text/html")
+    assert_equal "blog/2024/post.html", writer.file_for("/blog/2024/post", "text/html; charset=utf-8")
+  end
+
+  test "an HTML page whose last segment has a dot still gets .html" do
+    writer = Kiln::Writer.new(tmp_output, report: Kiln::Report.new)
+
+    assert_equal "posts/v1.2.html", writer.file_for("/posts/v1.2", "text/html")
+    assert_equal "posts/v1.2.html", writer.file_for("/posts/v1.2/", "text/html")
   end
 
   test "keeps paths that have an extension" do
-    writer = Kiln::Writer.new(tmp_output, mode: :directory, report: Kiln::Report.new)
+    writer = Kiln::Writer.new(tmp_output, report: Kiln::Report.new)
 
     assert_equal "feed.xml", writer.file_for("/feed.xml", "application/xml")
     assert_equal "health.json", writer.file_for("/health.json", "application/json")
@@ -29,7 +27,7 @@ class Kiln::WriterTest < Kiln::TestCase
   end
 
   test "adds an extension from the MIME type" do
-    writer = Kiln::Writer.new(tmp_output, mode: :directory, report: Kiln::Report.new)
+    writer = Kiln::Writer.new(tmp_output, report: Kiln::Report.new)
 
     assert_equal "api/status.json", writer.file_for("/api/status", "application/json")
     assert_equal "api/status.json", writer.file_for("/api/status", "application/json; charset=utf-8")
@@ -39,14 +37,14 @@ class Kiln::WriterTest < Kiln::TestCase
   end
 
   test "percent-decodes segments" do
-    writer = Kiln::Writer.new(tmp_output, mode: :directory, report: Kiln::Report.new)
+    writer = Kiln::Writer.new(tmp_output, report: Kiln::Report.new)
 
-    assert_equal "tags/日本/index.html", writer.file_for("/tags/%E6%97%A5%E6%9C%AC", "text/html")
-    assert_equal "a+b/index.html", writer.file_for("/a+b", "text/html")
+    assert_equal "tags/日本.html", writer.file_for("/tags/%E6%97%A5%E6%9C%AC", "text/html")
+    assert_equal "a+b.html", writer.file_for("/a+b", "text/html")
   end
 
   test "rejects traversal" do
-    writer = Kiln::Writer.new(tmp_output, mode: :directory, report: Kiln::Report.new)
+    writer = Kiln::Writer.new(tmp_output, report: Kiln::Report.new)
 
     assert_raises(Kiln::Error) { writer.file_for("/../etc/passwd", "text/html") }
     assert_raises(Kiln::Error) { writer.file_for("/a/%2E%2E/%2E%2E/b", "text/html") }
@@ -56,22 +54,18 @@ class Kiln::WriterTest < Kiln::TestCase
     assert_raises(Kiln::Error) { writer.write_file("/etc/outside.txt", "x") }
   end
 
-  test "rejects an unknown mode" do
-    assert_raises(Kiln::Error) { Kiln::Writer.new(tmp_output, mode: :flat, report: Kiln::Report.new) }
-  end
-
   test "writes files and creates directories" do
-    writer = Kiln::Writer.new(tmp_output, mode: :directory, report: Kiln::Report.new)
+    writer = Kiln::Writer.new(tmp_output, report: Kiln::Report.new)
 
-    assert_equal "now/index.html", writer.write("/now", "text/html", "<p>now</p>")
-    assert_equal "<p>now</p>", tmp_output.join("now/index.html").read
+    assert_equal "now.html", writer.write("/now", "text/html", "<p>now</p>")
+    assert_equal "<p>now</p>", tmp_output.join("now.html").read
     assert_equal "CNAME", writer.write_file("CNAME", "example.com\n")
     assert_equal "example.com\n", tmp_output.join("CNAME").read
   end
 
   test "records written files in the report" do
     report = Kiln::Report.new
-    writer = Kiln::Writer.new(tmp_output, mode: :directory, report:)
+    writer = Kiln::Writer.new(tmp_output, report:)
     2.times { writer.write_file("CNAME", "example.com\n") }
 
     assert_equal [ "CNAME" ], report.written
@@ -79,7 +73,7 @@ class Kiln::WriterTest < Kiln::TestCase
 
   test "writes binary bodies unchanged" do
     bytes = "\x89PNG\r\n\x1A\n\xFF\x00".b
-    Kiln::Writer.new(tmp_output, mode: :directory, report: Kiln::Report.new).write("/logo.png", "image/png", bytes)
+    Kiln::Writer.new(tmp_output, report: Kiln::Report.new).write("/logo.png", "image/png", bytes)
 
     assert_equal bytes, tmp_output.join("logo.png").binread
   end
@@ -97,7 +91,7 @@ class Kiln::WriterTest < Kiln::TestCase
     out.join("404.html").write("rendered")
     report = Kiln::Report.new
 
-    Kiln::Writer.new(out, mode: :directory, report:).copy_public(public_dir)
+    Kiln::Writer.new(out, report:).copy_public(public_dir)
 
     assert_equal "<svg/>", out.join("icon.svg").read
     assert_equal "hi", out.join(".well-known/security.txt").read

@@ -15,7 +15,7 @@ class Kiln::PathSafetyTest < Kiln::TestCase
 
   test "the writer never writes outside the output" do
     root = tmp_output.join("site")
-    writer = Kiln::Writer.new(root, mode: :directory, report: Kiln::Report.new)
+    writer = Kiln::Writer.new(root, report: Kiln::Report.new)
 
     ROUNDS.times do
       path = random_path
@@ -47,5 +47,22 @@ class Kiln::PathSafetyTest < Kiln::TestCase
       assert file.realpath.to_s.start_with?(real_root), "#{path.inspect} resolved to #{file.realpath}" if file
     end
     assert_nil resolver.resolve("/link.html"), "a symlink out of the root is not served"
+    assert_nil resolver.redirect("/link/"), "nor redirected to"
+  end
+
+  test "a static resolver redirect stays on the site and names a served file" do
+    root = tmp_output.join("site")
+    %w[index.html b.html a/index.html a/b.html 日本.html].each do
+      root.join(it).dirname.mkpath
+      root.join(it).write("x")
+    end
+    resolver = Kiln::StaticResolver.new(root)
+
+    ROUNDS.times do
+      path = random_path
+      location = resolver.redirect(path) or next
+      assert_match %r{\A/(?!/)}, location, "#{path.inspect} redirected off the site to #{location}"
+      assert resolver.resolve(location), "#{path.inspect} redirected to #{location}, which serves nothing"
+    end
   end
 end
