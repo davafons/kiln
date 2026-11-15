@@ -12,7 +12,7 @@ module Docs
     Page.new("views", "Views and assets", "Guides", "Build-time helpers, asset export, and the checks for development markup."),
     Page.new("content", "Markdown", "Guides", "Markdown views, collections, translations and drafts."),
     Page.new("testing", "Testing", "Guides", "Build the site in Minitest and assert on single pages."),
-    Page.new("deploying", "Deploying", "Guides", "Cloudflare Pages, GitHub Pages and committed output."),
+    Page.new("deploying", "Deploying", "Guides", "Cloudflare, GitHub Pages and committed output."),
     Page.new("configuration", "Configuration", "Reference", "Every option of Kiln.configure."),
     Page.new("build", "Build", "Reference", "Commands, build steps, output files and error messages."),
     Page.new("limits", "Known limits", "Reference", "What Kiln does not do.")
