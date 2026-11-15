@@ -1,9 +1,10 @@
 require "erb"
 
 module Kiln
-  # sitemap.xml with every indexable HTML page in the manifest.
+  # sitemap.xml with every indexable HTML page in the manifest, and a robots.txt that points to it.
   class Sitemap
     FILENAME = "sitemap.xml"
+    ROBOTS = "robots.txt"
 
     def self.noindex?(response, body)
       return false unless response.html?
@@ -33,6 +34,11 @@ module Kiln
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
         #{urls.join}</urlset>
       XML
+    end
+
+    # robots.txt that allows everything and points crawlers at the sitemap.
+    def write_robots(writer)
+      writer.write_file(ROBOTS, "User-agent: *\nAllow: /\n\nSitemap: #{@url}/#{FILENAME}\n")
     end
   end
 end

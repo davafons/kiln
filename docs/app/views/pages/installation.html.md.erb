@@ -30,7 +30,7 @@ Kiln.pages do
 end
 ```
 
-`url` is the site's public address, and `sitemap.xml` is written only when it is set. `not_found` is the route that becomes `404.html`. [Configuration](/configuration) lists every option.
+`url` is the site's public address, and `sitemap.xml` and `robots.txt` are written only when it is set. `not_found` is the route that becomes `404.html`. [Configuration](/configuration) lists every option.
 
 `Kiln.pages` says what to do with routes that have params. Leave it out if no route has any. If you are not sure which routes need it, run a build: the errors give the lines to add. Param sources are lambdas, so they can name models that are not loaded yet when this file loads.
 

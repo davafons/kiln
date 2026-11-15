@@ -22,7 +22,7 @@ A build runs in this order:
 5. Renders the `not_found` page.
 6. Exports the assets the output references: from HTML `href`, `src` and `srcset`, from the importmap, and from CSS `url()` and `@import`.
 7. Copies the `files` option's files, then `public/` without `public/assets`.
-8. Writes `_redirects`, `sitemap.xml` and `CNAME` when they apply.
+8. Writes `_redirects`, `sitemap.xml`, `robots.txt` and `CNAME` when they apply.
 9. Checks every internal link, anchor and importmap module.
 10. If there are no errors, replaces the output with the temporary directory and writes `tmp/kiln-manifest.json`.
 
@@ -37,6 +37,7 @@ Pages render one at a time. A build needs no `secret_key_base`, since it ships n
 | `404.html` | The [`not_found`](/configuration#not_found) option. Replaces a `public/404.html` without a warning. |
 | `_redirects` | Routes that redirect, after the rules of `public/_redirects`. |
 | `sitemap.xml` | Every HTML page, when `url` is set. Pages marked `noindex` by a robots meta tag or an `X-Robots-Tag` header are left out. |
+| `robots.txt` | When `url` is set: allows every crawler and points to `sitemap.xml`. A `robots.txt` from a route or `public/` is kept instead. |
 | `CNAME` | The [`cname`](/configuration#cname) option. Replaces a `public/CNAME` without a warning. |
 | Anything else | `public/`, or the [`files`](/configuration#files) option. |
 

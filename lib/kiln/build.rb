@@ -111,7 +111,7 @@ module Kiln
         write_files
         writer.copy_public(app.root.join("public"), generated: generated_files)
         Redirects.new(@redirects, host: config.host).write(writer) if @redirects.any?
-        Sitemap.new(manifest, url: config.url).write(writer) if config.url
+        write_sitemap if config.url
         write_cname if config.cname
       end
 
@@ -129,6 +129,13 @@ module Kiln
       # Files Kiln writes on purpose that may also exist in public/ (Rails ships a public/404.html).
       def generated_files
         [ ("404.html" if config.not_found), ("CNAME" if config.cname), *config.files.keys.map(&:to_s) ].compact
+      end
+
+      # A robots.txt from a route or public/ is the app's own and stays as it is.
+      def write_sitemap
+        sitemap = Sitemap.new(manifest, url: config.url)
+        sitemap.write(writer)
+        sitemap.write_robots(writer) unless @stage.join(Sitemap::ROBOTS).exist?
       end
 
       # config.cname = true takes the host from config.url.

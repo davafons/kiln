@@ -50,6 +50,7 @@ dist/
 ├── feed.rss
 ├── 404.html
 ├── sitemap.xml
+├── robots.txt
 └── assets/application-7cff19ac.css
 ```
 

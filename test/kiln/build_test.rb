@@ -14,7 +14,7 @@ class Kiln::BuildTest < Kiln::TestCase
     %w[
       index.html about.html guide.html posts.html posts/hello-world.html posts/second-post.html
       private.html contact.html es/contact.html ja/contact.html feed.xml health.json ping.txt 404.html
-      icon.svg _redirects sitemap.xml
+      icon.svg _redirects sitemap.xml robots.txt
     ].each { assert tmp_output.join(it).file?, "expected #{it}" }
 
     refute tmp_output.join("search").exist?, "skipped route must not be built"
@@ -65,9 +65,19 @@ class Kiln::BuildTest < Kiln::TestCase
     assert_includes sitemap, "<loc>https://example.com/posts/hello-world</loc>"
     refute_includes sitemap, "/private", "noindex pages stay out of the sitemap"
     assert_includes result.report.written, "sitemap.xml"
+    assert_equal "User-agent: *\nAllow: /\n\nSitemap: https://example.com/sitemap.xml\n", read("robots.txt")
 
     assert_equal "posts/hello-world.html", result.manifest.entries["/posts/hello-world"][:file]
     refute tmp_output.join("kiln-manifest.json").exist?, "the manifest is build state, not part of the site"
+  end
+
+  test "an app's own robots.txt replaces the generated one" do
+    robots = Rails.root.join("public/robots.txt")
+    robots.write("User-agent: *\nDisallow: /\n")
+    build
+    assert_equal "User-agent: *\nDisallow: /\n", read("robots.txt")
+  ensure
+    robots.delete
   end
 
   test "route helpers link to the served URL, without a trailing slash" do
@@ -175,6 +185,7 @@ class Kiln::BuildTest < Kiln::TestCase
     report = build(config:).report
     assert_equal [ "/CNAME" ], report.errors.map(&:path)
     assert_not_includes report.written, "sitemap.xml", "no sitemap without a url"
+    assert_not_includes report.written, "robots.txt"
   end
 
   test "Kiln.building? and the build cache only live during a build" do

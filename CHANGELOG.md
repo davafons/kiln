@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+Added:
+
+- When `url` is set, the build writes `robots.txt`, which allows every crawler and points to
+  `sitemap.xml`. A `robots.txt` from a route or `public/` is kept instead.
+
 ## 0.2.0 (2026-11-15)
 
 Breaking:

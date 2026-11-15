@@ -10,6 +10,7 @@ The output is a directory of plain files, so any static host can serve it. Kiln 
 | `_redirects` | A route redirects, or `public/_redirects` exists | Cloudflare and Netlify. GitHub Pages ignores it. |
 | `CNAME` | `cname` is set | GitHub Pages, for a custom domain. |
 | `sitemap.xml` | `url` is set | Search engines. |
+| `robots.txt` | `url` is set, and the app has no `robots.txt` of its own | Search engines, which find `sitemap.xml` through it. |
 
 `/about` is written to `about.html`, and every URL Kiln writes has no trailing slash. Cloudflare serves `about.html` at `/about` and redirects `/about/` and `/about.html` to it with a 307, as documented for [Workers static assets](https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/). Cloudflare Pages documents the `/about.html` redirect. GitHub Pages serves `about.html` at `/about` and at `/about.html`, and answers `/about/` with its 404 page.
 

@@ -33,7 +33,7 @@ The site's public address, such as `"https://example.com"`.
 
 - Its host is the `Host` header of every request a build sends. Without `url` that header is `localhost`.
 - Links to that host count as internal in the link check.
-- `sitemap.xml` is written only when `url` is set.
+- `sitemap.xml` and `robots.txt` are written only when `url` is set.
 - When the app restricts hosts with `config.hosts`, Kiln adds this host to the list.
 
 ## cname
